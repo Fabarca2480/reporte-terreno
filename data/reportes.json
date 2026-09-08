@@ -1,0 +1,36 @@
+[
+  {
+    "id": "RT-1788793771765-7829fa071a3108",
+    "lugar": "STUD TANTEHUE",
+    "fechaInicio": "2026-09-07",
+    "fechaTermino": "2026-09-07",
+    "horaInicio": "10:00",
+    "horaTermino": "12:00",
+    "personas": "2",
+    "trabajo": "prueba envio desde trabajador",
+    "materiales": [],
+    "maquinaria": [],
+    "estado": "Terminado",
+    "creadoLocal": "2026-09-07T15:09:31.765Z",
+    "createdAt": "2026-09-07T15:09:32.223Z",
+    "estadoEnvio": "RECIBIDO",
+    "fotos": []
+  },
+  {
+    "id": "RT-1788793803476-60594f055602d",
+    "lugar": "STUD TANTEHUE",
+    "fechaInicio": "2026-09-07",
+    "fechaTermino": "2026-09-07",
+    "horaInicio": "10:00",
+    "horaTermino": "12:00",
+    "personas": "2",
+    "trabajo": "prueba envio trabajador",
+    "materiales": [],
+    "maquinaria": [],
+    "estado": "Terminado",
+    "creadoLocal": "2026-09-07T15:10:03.476Z",
+    "createdAt": "2026-09-07T15:10:03.485Z",
+    "estadoEnvio": "RECIBIDO",
+    "fotos": []
+  }
+]
