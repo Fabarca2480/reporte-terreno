@@ -1,0 +1,1931 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#17324d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Reporte MYC">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Reporte de Terreno - Inversiones y Mantenimiento MYC SpA</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f3f5f7;color:#1f2937}
+header{background:#17324d;color:#fff;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;user-select:none}
+.brand-wrap{display:flex;align-items:center;gap:12px;cursor:pointer}
+.brand-logo{width:48px;height:48px;border-radius:50%;background:#fff;object-fit:contain;border:2px solid #fff;flex-shrink:0}
+header h1{margin:0 0 2px;font-size:19px}
+header p{margin:0;font-size:12px;opacity:.85}
+.net-badge{font-size:12px;font-weight:700;padding:5px 10px;border-radius:99px;background:#10b981;color:#fff;display:inline-flex;align-items:center;gap:5px}
+.net-badge.offline{background:#f59e0b;color:#111827}
+main{max-width:860px;margin:auto;padding:14px 12px 60px}
+.card{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 2px 10px #0001}
+label{display:block;font-weight:700;font-size:14px;margin-bottom:7px}
+input,select,textarea{width:100%;border:1px solid #ccd3da;border-radius:9px;padding:11px;font-size:15px;background:#fff}
+textarea{min-height:105px;resize:vertical}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+button{border:0;border-radius:10px;padding:12px 15px;font-weight:700;font-size:14px;cursor:pointer;transition:opacity .15s}
+button:disabled{opacity:.6;cursor:not-allowed}
+.primary{background:#17324d;color:#fff;width:100%;font-size:16px}
+.secondary{background:#e8edf2;color:#17324d}
+.success{background:#0f766e;color:#fff}
+.danger{background:#fee2e2;color:#991b1b}
+.btn-sm{padding:6px 11px;font-size:12.5px;border-radius:8px}
+.item{display:grid;grid-template-columns:70px 90px 1fr 38px;gap:7px;margin:8px 0}
+.item button{padding:0;background:#f0dede;color:#9b2222}
+.muted{color:#64748b;font-size:13px}
+.status{padding:11px 13px;border-radius:9px;font-size:13px;margin-top:10px;background:#eef2f7;line-height:1.4}
+.status.ok{background:#dcfce7;color:#14532d}
+.status.warn{background:#fef3c7;color:#78350f}
+.hidden{display:none!important}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.metric{background:#eef2f7;border-radius:10px;padding:12px;text-align:center;font-size:12.5px}
+.metric b{display:block;font-size:21px;color:#17324d}
+.metric.alert-metric{background:#fff1f2;border:1px solid #fecdd3;color:#9f1239}
+.metric.alert-metric b{color:#be123c}
+.log-internal-box{background:#f8fafc;border:1px dashed #94a3b8;border-radius:10px;padding:9px 12px;margin:8px 0;font-size:12.5px;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.log-internal-box.emergencia{background:#fef2f2;border:1px solid #fca5a5}
+.log-internal-box.hora-extra{background:#fffbeb;border:1px solid #fcd34d}
+.log-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:99px;font-weight:700;font-size:11.5px}
+.log-pill.emerg{background:#dc2626;color:#fff}
+.log-pill.extra{background:#d97706;color:#fff}
+.log-pill.normal{background:#e2e8f0;color:#334155}
+.log-pill.marker-1730{background:#7c2d12;color:#ffedd5;border:1px solid #fdba74}
+.report{border-top:1px solid #e5e7eb;padding:14px 0}
+.report:first-child{border-top:0}
+.report h3{margin:0 0 6px;font-size:15px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
+.report p{margin:4px 0;font-size:13px;line-height:1.4}
+.badge{display:inline-block;padding:4px 9px;border-radius:99px;background:#eef2f7;font-size:12px;font-weight:700}
+.badge.Terminado{background:#dcfce7;color:#166534}
+.badge.En-proceso{background:#dbeafe;color:#1e40af}
+.badge.Pendiente{background:#fef3c7;color:#92400e}
+.folio-tag{background:#17324d;color:#fff;padding:3px 8px;border-radius:6px;font-size:12px;font-weight:700;margin-right:6px}
+.photos{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.photos img{width:95px;height:75px;object-fit:cover;border-radius:8px;border:1px solid #e2e8f0}
+.sublist{background:#f8fafc;border-radius:8px;padding:8px 10px;margin:6px 0;font-size:12.5px}
+.preview-box{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.preview-box img{width:70px;height:70px;object-fit:cover;border-radius:8px;border:1px solid #cbd5e1}
+.worker-banner{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#eef6ff;border:1px solid #bfdbfe;padding:12px 14px;border-radius:11px}
+.worker-banner b{color:#1e3a8a;font-size:15px}
+.install-banner{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#ecfdf5;border:1px solid #6ee7b7;padding:12px 14px;border-radius:12px;margin-bottom:12px}
+.install-banner b{color:#065f46;font-size:14px;display:block}
+.install-banner span{color:#047857;font-size:12px}
+.report-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.edit-box{background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:12px;margin-top:10px}
+.admin-bar{display:flex;justify-content:space-between;align-items:center;background:#1e293b;color:#fff;padding:10px 14px;border-radius:12px;margin-bottom:12px}
+footer{text-align:center;color:#94a3b8;font-size:12px;padding:18px 10px 28px}
+footer a{color:#94a3b8;text-decoration:none;opacity:.6;padding:4px 8px}
+footer a:hover{opacity:1}
+@media(max-width:560px){
+  .row{grid-template-columns:1fr}
+  .grid{grid-template-columns:1fr 1fr}
+  .item{grid-template-columns:60px 78px 1fr 36px}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand-wrap" onclick="toqueSecretoLogo()" title="Inversiones y Mantenimiento MYC SpA">
+    <img id="hdrLogo" alt="MYC SpA" class="brand-logo">
+    <div>
+      <h1>Reporte de Terreno</h1>
+      <p>Inversiones y Mantenimiento MYC SpA</p>
+    </div>
+  </div>
+  <div id="netBadge" class="net-badge">🟢 En línea</div>
+</header>
+
+<main>
+  <!-- Banner para instalar como App directa en el celular -->
+  <div id="installBanner" class="install-banner hidden">
+    <div>
+      <b id="installTitle">📲 Instalar como Aplicación en este teléfono</b>
+      <span id="installDesc">Ábrela directo desde tu pantalla de inicio sin usar el navegador.</span>
+    </div>
+    <button id="installBtn" type="button" class="success btn-sm" onclick="instalarApp()">Instalar App</button>
+  </div>
+
+  <!-- VISTA TRABAJADOR (Única vista visible por defecto) -->
+  <section id="trabajador">
+    <div class="card">
+      <div id="workerSavedBox" class="worker-banner hidden">
+        <div>
+          <span class="muted" style="display:block;font-size:11.5px">REPORTE GENERADO POR:</span>
+          <b id="workerSavedName"></b>
+        </div>
+        <button type="button" class="secondary btn-sm" onclick="cambiarTrabajador()">Cambiar nombre</button>
+      </div>
+
+      <div id="workerInputBox">
+        <label>👷 ¿Quién genera el reporte? <span style="color:#dc2626">*</span></label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input id="trabajadorNombre" placeholder="Escribe tu Nombre y Apellido (ej: Juan Pérez)" style="flex:1;min-width:210px">
+          <button type="button" class="secondary" onclick="fijarTrabajador()">Guardar en mi teléfono</button>
+        </div>
+        <div class="muted" style="margin-top:5px">Lo escribes solo la 1ª vez y quedará fijo automáticamente en este teléfono.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <label>Lugar <span style="color:#dc2626">*</span></label>
+      <input id="lugar" list="lugaresList" placeholder="Escribe parte del lugar, por ejemplo: bri">
+      <datalist id="lugaresList"></datalist>
+      <div class="muted" style="margin-top:4px">Busca escribiendo algunas letras.</div>
+      <div style="margin-top:9px">
+        <label style="font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer">
+          <input id="otro" type="checkbox" style="width:auto" onchange="toggleOtro()"> Otro lugar
+        </label>
+      </div>
+      <div id="otroBox" class="hidden" style="margin-top:8px">
+        <input id="otroLugar" placeholder="Escribe el lugar de trabajo">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div><label>Fecha inicio</label><input id="fi" type="date"></div>
+        <div><label>Fecha término</label><input id="ft" type="date"></div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <div><label>Hora inicio <span style="color:#dc2626">*</span></label><input id="hi" type="text" inputmode="numeric" placeholder="HH:MM (ej: 08:30)" maxlength="5"></div>
+        <div><label>Hora término <span style="color:#dc2626">*</span></label><input id="ht" type="text" inputmode="numeric" placeholder="HH:MM (ej: 17:30)" maxlength="5"></div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <div>
+          <label>Personas en cuadrilla</label>
+          <input id="personas" type="number" min="1" value="2">
+        </div>
+        <div>
+          <label>Tipo de horario</label>
+          <select id="tipoHorario">
+            <option value="Normal">Normal</option>
+            <option value="Emergencia">Emergencia</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <label>Trabajo realizado <span style="color:#dc2626">*</span></label>
+      <textarea id="trabajo" placeholder="Describe brevemente el trabajo realizado..."></textarea>
+    </div>
+
+    <div class="card">
+      <label>Materiales <span class="muted">(opcional)</span></label>
+      <div id="mat"></div>
+      <button type="button" class="secondary" onclick="add('mat','Material')">+ Agregar material</button>
+    </div>
+
+    <div class="card">
+      <label>Maquinaria / equipos <span class="muted">(opcional)</span></label>
+      <div id="maq"></div>
+      <button type="button" class="secondary" onclick="add('maq','Equipo / maquinaria')">+ Agregar maquinaria</button>
+    </div>
+
+    <div class="card">
+      <label>Fotografías <span class="muted">(opcional, hasta 8 fotos)</span></label>
+      <input id="fotos" type="file" accept="image/*" multiple onchange="previsualizarFotos()">
+      <div class="muted" style="margin-top:4px">Se optimizan automáticamente para enviarse rápido incluso con baja señal.</div>
+      <div id="fotoPreview" class="preview-box"></div>
+    </div>
+
+    <div class="card">
+      <label>Estado del trabajo</label>
+      <select id="estado">
+        <option>Terminado</option>
+        <option>En proceso</option>
+        <option>Pendiente</option>
+      </select>
+    </div>
+
+    <div class="card">
+      <button id="btnEnviar" class="primary" onclick="enviar()">ENVIAR REPORTE</button>
+      <div id="status" class="status">Con señal se envía de inmediato. Sin señal queda guardado con sus fotos en este teléfono y se envía solo al recuperar cobertura.</div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
+        <label style="margin:0">Reportes pendientes en este teléfono</label>
+        <button id="btnSyncManual" class="secondary hidden" style="padding:7px 12px;font-size:12px" onclick="sync(true)">🔄 Reintentar ahora</button>
+      </div>
+      <div id="pend" class="muted">Sin pendientes.</div>
+    </div>
+  </section>
+
+  <!-- VISTA LOGÍSTICA (Oculta por defecto, solo se abre a pedido) -->
+  <section id="logistica" class="hidden">
+    <div class="admin-bar">
+      <b>💻 Panel de Logística y Cotizaciones MYC</b>
+      <button type="button" class="secondary btn-sm" onclick="cerrarLogistica()">← Volver al Formulario</button>
+    </div>
+
+    <div id="pinCard" class="card">
+      <label>🔒 Acceso Logística</label>
+      <p class="muted" style="margin-top:0">Ingresa el PIN de supervisión para ver, gestionar y generar cotizaciones de los reportes recibidos.</p>
+      <div style="display:flex;gap:8px;max-width:320px">
+        <input id="pinInput" type="password" inputmode="numeric" placeholder="PIN de acceso" onkeydown="if(event.key==='Enter')verificarPin()">
+        <button class="primary" style="width:auto" onclick="verificarPin()">Entrar</button>
+      </div>
+      <div id="pinError" class="status warn hidden">PIN incorrecto.</div>
+    </div>
+
+    <div id="panelLogistica" class="hidden">
+      <div class="card">
+        <div class="grid">
+          <div class="metric"><b id="mt">0</b>Total</div>
+          <div class="metric"><b id="mh">0</b>Hoy</div>
+          <div class="metric"><b id="mp">0</b>En proceso</div>
+          <div class="metric"><b id="mpe">0</b>Pendientes</div>
+          <div class="metric alert-metric" title="Trabajos fuera de horario (>17:30 / <08:00) o Sáb/Dom/Festivo"><b id="mext">0</b>🚨 Extra / Emerg.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <label>Buscar y Filtrar</label>
+        <input id="q" placeholder="Folio (ej: RT-0001), lugar, trabajador o trabajo">
+        <div class="row" style="margin-top:10px">
+          <div><label>Desde</label><input id="desde" type="date"></div>
+          <div><label>Hasta</label><input id="hasta" type="date"></div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <div>
+            <label>Estado</label>
+            <select id="est">
+              <option value="">Todos</option>
+              <option>Terminado</option>
+              <option>En proceso</option>
+              <option>Pendiente</option>
+            </select>
+          </div>
+          <div>
+            <label>🔒 Control Horario / Pago (Solo Logística)</label>
+            <select id="filtroHorario" onchange="cargar()">
+              <option value="">Todos los horarios</option>
+              <option value="MARCADOR">🚩 Con Marcador (>17:30 / Sáb-Dom-Festivo / Recargo)</option>
+              <option value="EMERGENCIA">🚨 Solo Pago Emergencia</option>
+              <option value="HORA_EXTRA">⏰ Solo Pago Hora Extra</option>
+              <option value="NORMAL">✅ Solo Horario Habitual</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <button class="primary" style="flex:1;min-width:180px" onclick="cargar()">🔄 ACTUALIZAR LISTA</button>
+          <button class="success" style="flex:1.5;min-width:250px" onclick="exportarExcelValorizacion()">📥 EXCEL COTIZACIÓN MYC (RESUMEN + HOJA POR TRABAJO)</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <label>Reportes recibidos en central</label>
+        <div id="lista" class="muted">Cargando...</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  Inversiones y Mantenimiento MYC SpA <a href="#logistica" onclick="abrirLogistica(event)" title="Acceso Supervisión">🔒</a>
+</footer>
+
+<script>
+const LOGO_MYC = "data:image/jpeg;base64,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";
+
+const lugares=["G 26 REPRODUCCIÓN", "STUD TANTEHUE", "SE SITIO 9", "SE SITIO 3", "SE SITIO 4", "SE SITIO 1", "SE SITIO 2", "SE SITIO 7", "SE SITIO 5", "SE SITIO 6", "SE SITIO 8", "G 14 REPRODUCCIÓN", "G 22 REPRODUCCIÓN", "G 16 REPRODUCCIÓN", "G 15 REPRODUCCIÓN", "G 23 REPRODUCCIÓN", "G 10 REPRODUCCIÓN", "G 24 REPRODUCCIÓN", "G 20 REPRODUCCIÓN", "G 21 REPRODUCCIÓN", "G 17 REPRODUCCIÓN", "G 19 REPRODUCCIÓN", "G 18 REPRODUCCIÓN", "DV LA MINA", "DV LOS TATAS", "DV DIVISADERO", "DV LAS BRISAS", "DV POCILLAS", "DV DON SATA", "DV EL RETORNO", "DV CASTROL", "DV CONCEJALES", "DV PIEDRA DEL JOTE", "DV EL ALCALDE", "DV MR DIC", "DV LA NORIA", "DV PIEDRA DEL TRARO", "DV EL MONTE", "DV MAITENLAHUE", "DV EL YALI", "DV EL MILAGRO", "DV MANZO", "DV ELHUE", "DV CORNECHE", "DV EL TÓTEM", "ENG CHANCÓN 1", "ENG CHANCÓN 2", "ENG EL CARMEN", "ENG LOS GOMEROS", "ENG LA MARAVILLA", "ENG EL QUISCO", "ENG EL ALMENDRO", "ENG ESMERALDA", "ENG TOTIHUE", "ENG. LA LECHERIA", "ENG ARBOLEDA", "Sitio Don Charles", "SITIO RINCÓN DE ABRA", "Sitio La Leonera", "G 6 REPRODUCCIÓN", "G 25 REPRODUCCIÓN", "G 8 REPRODUCCIÓN", "G 5 REPRODUCCIÓN", "G 28 REPRODUCCIÓN", "G 12 REPRODUCCIÓN", "STUD RAMIRANA", "STUD SANTA ROSA", "COYA 2 REPRODUCCIÓN", "COYA 1 REPRODUCCIÓN", "TESTAJE", "G 3 REPRODUCCIÓN", "G 4 REPRODUCCIÓN", "G 9 REPRODUCCIÓN", "G 13", "Cuarentena Idahue", "DV EL MIRADOR", "DV El litre", "DV Rapel", "ENG LOS ALAMOS", "ENG EL ESTERO", "ENG HONORABLE", "ENG LA CAÑA", "ENG LA COPA", "ENG LA TOSCA", "ENG EL PEUMO", "ENG EL ESPINO", "DV LOS LLANOS", "DV LAS MURALLAS", "DV LOS CLONQUIS", "DV VARILLAS", "DV SAN MANUEL", "DV LOS CURUROS", "DV BARRANCAS", "DV EL CAPRICHO", "BIODIG. CORNECHE", "BIODIG. LA ESTRELLA", "BIODIG. LAS PALMAS GR.21", "BIODIG. PERALILLO", "BIODIG. POCILLAS", "BIODIG. RAMIRANA", "BIODIG. SANTA ROSA", "PL COMP. LA ESTRELLA", "PLANTA COMP TANTEHUE", "PLTA COMP MAITENLAHU", "PT. COMP. LA MANGA", "PT. COMP. LA MANGA 2", "PTA COMP VALDEBENITO", "PL TR RILES TANTEHUE", "PT. RILES LA ESTRELLA", "PT. RILES LA MANGA", "PT. RILES MAITENLAHUE", "PT. RILES PERALILLO", "PT. RILES POCILLAS", "PT. RILES RAMIRANA", "PT. RILES VALDEBENIT", "OF CENTRAL RGUA", "STT ARBOLEDA", "STT CASTILLO 6", "STT CASTILLO 8", "STT CHANCÓN 1", "STT CHANCÓN 2", "STT DON CHARLES", "STT EL ALMENDRO", "STT EL CARMEN", "STT EL QUISCO", "STT GOMEROS", "STT GR 9 LA HIGUERA", "STT LOICA ESPINO", "STT LOICA PEUMO", "STT LONGOVILO G14", "STT LONGOVILO G15", "STT LONGOVILO G16", "STT LONGOVILO G22", "STT RINCON DE ABRA", "STT TOTIHUE", "BIODIG. ESTRELLA 1", "BIODIG. PALMAS GR.21", "PT. RILES ESTRELLA", "PT. RILES MAITENLAH", "OCR"];
+
+const $ = id => document.getElementById(id);
+const API_URL = "api.php";
+let fotosComprimidas = [];
+let ultimosReportesCargados = [];
+let isSyncing = false;
+let deferredInstallPrompt = null;
+let logoTapCount = 0;
+let logoTapTimer = null;
+
+// --- ACCESO A LOGÍSTICA SOLO A PEDIDO ---
+function toqueSecretoLogo() {
+  logoTapCount++;
+  clearTimeout(logoTapTimer);
+  if (logoTapCount >= 3) {
+    logoTapCount = 0;
+    abrirLogistica();
+  } else {
+    logoTapTimer = setTimeout(() => {
+      logoTapCount = 0;
+    }, 1200);
+  }
+}
+
+function abrirLogistica(ev) {
+  if (ev) ev.preventDefault();
+  $("trabajador").classList.add("hidden");
+  $("logistica").classList.remove("hidden");
+  const pin = sessionStorage.getItem("adminPinTerreno");
+  if (pin) {
+    $("pinCard").classList.add("hidden");
+    $("panelLogistica").classList.remove("hidden");
+    cargar();
+  } else {
+    $("pinCard").classList.remove("hidden");
+    $("panelLogistica").classList.add("hidden");
+    setTimeout(() => $("pinInput").focus(), 100);
+  }
+}
+
+function cerrarLogistica() {
+  if (window.location.hash === "#logistica") {
+    history.replaceState(null, "", window.location.pathname + window.location.search);
+  }
+  $("logistica").classList.add("hidden");
+  $("trabajador").classList.remove("hidden");
+}
+
+window.addEventListener("hashchange", () => {
+  if (window.location.hash === "#logistica") {
+    abrirLogistica();
+  }
+});
+
+// --- MODO APLICACIÓN INSTALABLE Y DETECCIÓN DE NAVEGADOR INTERNO DE WHATSAPP ---
+const isStandalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true;
+const ua = navigator.userAgent || "";
+const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+const isAndroid = /Android/i.test(ua);
+const isInAppBrowser = /WhatsApp|FBAN|FBAV|Instagram|Line|wv/i.test(ua);
+
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  if (!isStandalone) {
+    $("installBanner").classList.remove("hidden");
+  }
+});
+
+window.addEventListener("appinstalled", () => {
+  $("installBanner").classList.add("hidden");
+  deferredInstallPrompt = null;
+});
+
+function instalarApp() {
+  // Si el trabajador abrió el link dentro del visor interno de WhatsApp en Android, lo enviamos a Chrome real
+  if (isInAppBrowser && isAndroid) {
+    window.location.href = "intent://" + window.location.host + window.location.pathname + "#Intent;scheme=https;package=com.android.chrome;end";
+    return;
+  }
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.then(() => {
+      deferredInstallPrompt = null;
+    });
+  } else if (isIOS) {
+    alert("Para instalar la aplicación en tu iPhone:\n\n1. Si abriste el link desde WhatsApp, primero toca el ícono de Safari (🧭 abajo a la derecha) para abrirlo en Safari.\n2. Toca el botón 'Compartir' (el cuadrado con la flecha hacia arriba ⬆️).\n3. Selecciona 'Agregar a inicio'.");
+  } else {
+    alert("Para instalar la aplicación en tu teléfono:\n\n1. Si abriste el link dentro de WhatsApp, toca los 3 puntos (⋮) arriba a la derecha y elige 'Abrir en Chrome / navegador'.\n2. Luego toca los 3 puntos (⋮) de Chrome y selecciona 'Instalar aplicación' o 'Agregar a la pantalla principal'.");
+  }
+}
+
+// --- IDENTIFICACIÓN FIJA DEL TRABAJADOR EN EL TELÉFONO ---
+function actualizarVistaTrabajador() {
+  const guardado = (localStorage.getItem("nombreTrabajadorTerreno") || "").trim();
+  if (guardado) {
+    $("trabajadorNombre").value = guardado;
+    $("workerSavedName").textContent = "👷 " + guardado;
+    $("workerSavedBox").classList.remove("hidden");
+    $("workerInputBox").classList.add("hidden");
+  } else {
+    $("workerSavedBox").classList.add("hidden");
+    $("workerInputBox").classList.remove("hidden");
+  }
+}
+
+function fijarTrabajador() {
+  const val = $("trabajadorNombre").value.trim();
+  if (!val) {
+    alert("Escribe tu nombre y apellido primero.");
+    $("trabajadorNombre").focus();
+    return;
+  }
+  localStorage.setItem("nombreTrabajadorTerreno", val);
+  actualizarVistaTrabajador();
+}
+
+function cambiarTrabajador() {
+  $("workerSavedBox").classList.add("hidden");
+  $("workerInputBox").classList.remove("hidden");
+  $("trabajadorNombre").focus();
+  $("trabajadorNombre").select();
+}
+
+// --- BASE DE DATOS LOCAL (IndexedDB + Respaldo LocalStorage) ---
+const DB_NAME = "ReportesTerrenoDB";
+const STORE_NAME = "pendientes";
+
+function abrirDB() {
+  return new Promise((resolve, reject) => {
+    if (!window.indexedDB) return reject(new Error("Sin IndexedDB"));
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: "id" });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function obtenerPendientes() {
+  try {
+    const db = await abrirDB();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const req = tx.objectStore(STORE_NAME).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+  } catch (e) {
+    return JSON.parse(localStorage.getItem("pendientesTerreno") || "[]");
+  }
+}
+
+async function guardarPendiente(reporte) {
+  try {
+    const db = await abrirDB();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      tx.objectStore(STORE_NAME).put(reporte);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch (e) {
+    const actual = JSON.parse(localStorage.getItem("pendientesTerreno") || "[]");
+    actual.push(reporte);
+    localStorage.setItem("pendientesTerreno", JSON.stringify(actual));
+  }
+}
+
+async function eliminarPendiente(id) {
+  try {
+    const db = await abrirDB();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      tx.objectStore(STORE_NAME).delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch (e) {}
+  const actual = JSON.parse(localStorage.getItem("pendientesTerreno") || "[]").filter(x => x.id !== id);
+  localStorage.setItem("pendientesTerreno", JSON.stringify(actual));
+}
+
+async function migrarPendientesAntiguos() {
+  try {
+    const antiguos = JSON.parse(localStorage.getItem("pendientesTerreno") || "[]");
+    if (antiguos.length) {
+      for (const r of antiguos) {
+        if (!r.trabajador) r.trabajador = localStorage.getItem("nombreTrabajadorTerreno") || "No indicado";
+        await guardarPendiente(r);
+      }
+      localStorage.removeItem("pendientesTerreno");
+    }
+  } catch (e) {}
+}
+
+// --- COMPRESIÓN AUTOMÁTICA DE FOTOGRAFÍAS (OPTIMIZADA PARA SEÑAL MÓVIL Y PROXY < 1MB) ---
+function comprimirArchivoImagen(file) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX_SIZE = 1024;
+        let w = img.width;
+        let h = img.height;
+        if (w > h && w > MAX_SIZE) {
+          h = Math.round((h * MAX_SIZE) / w);
+          w = MAX_SIZE;
+        } else if (h > MAX_SIZE) {
+          w = Math.round((w * MAX_SIZE) / h);
+          h = MAX_SIZE;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.68);
+        resolve({
+          nombre: (file.name || "foto.jpg").replace(/\.[^.]+$/, "") + ".jpg",
+          dataUrl
+        });
+      };
+      img.onerror = () => resolve(null);
+      img.src = e.target.result;
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+}
+
+// Re-optimiza fotos antiguas guardadas en IndexedDB si pesan más de ~280KB
+function optimizarDataUrlParaEnvio(dataUrl) {
+  return new Promise(resolve => {
+    if (!dataUrl || dataUrl.length < 380000) {
+      resolve(dataUrl);
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      const MAX_SIZE = 1024;
+      let w = img.width;
+      let h = img.height;
+      if (w > h && w > MAX_SIZE) {
+        h = Math.round((h * MAX_SIZE) / w);
+        w = MAX_SIZE;
+      } else if (h > MAX_SIZE) {
+        w = Math.round((w * MAX_SIZE) / h);
+        h = MAX_SIZE;
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/jpeg", 0.65));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+async function previsualizarFotos() {
+  const files = [...$("fotos").files].slice(0, 8);
+  $("fotoPreview").innerHTML = '<span class="muted">Optimizando fotografías...</span>';
+  const procesadas = [];
+  for (const f of files) {
+    const comp = await comprimirArchivoImagen(f);
+    if (comp) procesadas.push(comp);
+  }
+  fotosComprimidas = procesadas;
+  $("fotoPreview").innerHTML = fotosComprimidas
+    .map(f => `<img src="${f.dataUrl}" title="${esc(f.nombre)}">`)
+    .join("");
+}
+
+function dataUrlToBlob(dataUrl) {
+  const arr = dataUrl.split(",");
+  const mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) u8arr[n] = bstr.charCodeAt(n);
+  return new Blob([u8arr], { type: mime });
+}
+
+// --- INICIALIZACIÓN ---
+async function init() {
+  $("hdrLogo").src = LOGO_MYC;
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js?v=9").then(reg => {
+      try { reg.update(); } catch (e) {}
+    }).catch(() => {});
+  }
+  if (!isStandalone && /Android|iPhone|iPad|iPod/i.test(ua)) {
+    $("installBanner").classList.remove("hidden");
+    if (isInAppBrowser && isAndroid) {
+      $("installTitle").textContent = "📲 Instalar como Aplicación directa";
+      $("installDesc").textContent = "Toca aquí para abrir en Chrome e instalar el ícono en tu teléfono.";
+      $("installBtn").textContent = "Abrir en Chrome";
+    }
+  }
+  $("lugaresList").innerHTML = lugares.map(x => `<option value="${esc(x)}"></option>`).join("");
+  const d = new Date();
+  const z = new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  $("fi").value = z;
+  $("ft").value = z;
+
+  actualizarVistaTrabajador();
+  actualizarEstadoRed();
+  await migrarPendientesAntiguos();
+  await pend();
+  sync();
+
+  if (window.location.hash === "#logistica" || window.location.search.indexOf("logistica") !== -1) {
+    abrirLogistica();
+  }
+}
+
+function actualizarEstadoRed() {
+  const online = navigator.onLine;
+  const b = $("netBadge");
+  if (online) {
+    b.textContent = "🟢 En línea";
+    b.classList.remove("offline");
+  } else {
+    b.textContent = "🟠 Sin señal (Guardado local activo)";
+    b.classList.add("offline");
+  }
+}
+
+window.addEventListener("online", () => {
+  actualizarEstadoRed();
+  sync();
+});
+window.addEventListener("offline", actualizarEstadoRed);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && navigator.onLine) sync();
+});
+setInterval(sync, 25000);
+
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function toggleOtro() {
+  $("otroBox").classList.toggle("hidden", !$("otro").checked);
+}
+
+function add(id, ph) {
+  const d = document.createElement("div");
+  d.className = "item";
+  d.innerHTML = `<input type="number" min="0" step="0.01" placeholder="Cant."><input placeholder="Unidad"><input placeholder="${ph}"><button type="button" onclick="this.parentElement.remove()">×</button>`;
+  $(id).appendChild(d);
+}
+
+function norm(id) {
+  const e = $(id);
+  let v = e.value.replace(/\D/g, "");
+  if (v.length === 3) v = "0" + v;
+  if (v.length === 4) e.value = v.slice(0, 2) + ":" + v.slice(2);
+}
+["hi", "ht"].forEach(id => $(id).addEventListener("blur", () => norm(id)));
+
+function items(id) {
+  return [...document.querySelectorAll("#" + id + " .item")]
+    .map(r => {
+      const i = r.querySelectorAll("input");
+      return { cantidad: i[0].value.trim(), unidad: i[1].value.trim(), descripcion: i[2].value.trim() };
+    })
+    .filter(x => x.descripcion);
+}
+
+function build() {
+  norm("hi");
+  norm("ht");
+
+  const nombreTrab = $("trabajadorNombre").value.trim() || (localStorage.getItem("nombreTrabajadorTerreno") || "").trim();
+  if (!nombreTrab) {
+    $("workerSavedBox").classList.add("hidden");
+    $("workerInputBox").classList.remove("hidden");
+    $("trabajadorNombre").focus();
+    throw Error("Ingresa tu Nombre y Apellido en '¿Quién genera el reporte?'. Quedará guardado en tu teléfono para los próximos envíos.");
+  }
+  localStorage.setItem("nombreTrabajadorTerreno", nombreTrab);
+  actualizarVistaTrabajador();
+
+  const otro = $("otro").checked;
+  const lugar = otro ? $("otroLugar").value.trim() : $("lugar").value.trim();
+  const rx = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+  if (!lugar) throw Error("Escribe o selecciona un lugar, o marca OTRO LUGAR.");
+  if (!otro && !lugares.includes(lugar)) throw Error("El lugar escrito no está en el catálogo. Selecciónalo de la lista o marca 'Otro lugar'.");
+  if (!$("trabajo").value.trim()) throw Error("Ingresa la descripción del trabajo realizado.");
+  if (!rx.test($("hi").value) || !rx.test($("ht").value)) throw Error("Ingresa la hora como HH:MM, por ejemplo 08:30.");
+
+  const uid = "UID-" + Date.now() + "-" + Math.random().toString(16).slice(2, 8);
+  return {
+    id: uid,
+    clientUid: uid,
+    trabajador: nombreTrab,
+    lugar,
+    fechaInicio: $("fi").value,
+    fechaTermino: $("ft").value,
+    horaInicio: $("hi").value,
+    horaTermino: $("ht").value,
+    personas: $("personas").value,
+    tipoHorario: $("tipoHorario") ? $("tipoHorario").value : "Normal",
+    trabajo: $("trabajo").value.trim(),
+    materiales: items("mat"),
+    maquinaria: items("maq"),
+    estado: $("estado").value,
+    creadoLocal: new Date().toISOString(),
+    fotosBase64: fotosComprimidas.slice(0, 8)
+  };
+}
+
+async function enviarReporteAlServidor(r) {
+  if (!r.trabajador || !String(r.trabajador).trim()) {
+    r.trabajador = localStorage.getItem("nombreTrabajadorTerreno") || "No indicado";
+  }
+  const fd = new FormData();
+  const copiaReporte = { ...r };
+  const fotosAdjuntas = Array.isArray(copiaReporte.fotosBase64) ? copiaReporte.fotosBase64 : [];
+  // IMPORTANTE: Eliminar fotosBase64 del JSON para no duplicar peso y evitar HTTP 413 (>1MB en proxy Vínculo.cl)
+  delete copiaReporte.fotosBase64;
+
+  const blobsParaSubir = [];
+  for (let idx = 0; idx < fotosAdjuntas.length; idx++) {
+    const f = fotosAdjuntas[idx];
+    try {
+      const optDataUrl = await optimizarDataUrlParaEnvio(f.dataUrl);
+      const blob = dataUrlToBlob(optDataUrl);
+      blobsParaSubir.push({ blob, nombre: f.nombre || `foto-${idx + 1}.jpg` });
+    } catch (e) {}
+  }
+
+  // Subir en la petición inicial las fotos que quepan bajo 720 KB (límite seguro bajo 1MB de proxy)
+  let bytesAcumulados = 0;
+  const colaFotosExtra = [];
+  for (let i = 0; i < blobsParaSubir.length; i++) {
+    const item = blobsParaSubir[i];
+    if (bytesAcumulados + item.blob.size <= 720000) {
+      fd.append("fotos[]", item.blob, item.nombre);
+      bytesAcumulados += item.blob.size;
+    } else {
+      colaFotosExtra.push(item);
+    }
+  }
+
+  fd.append("report", JSON.stringify(copiaReporte));
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 25000);
+
+  let resultado;
+  try {
+    const resp = await fetch(API_URL, {
+      method: "POST",
+      body: fd,
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    resultado = await resp.json();
+  } catch (err) {
+    clearTimeout(timer);
+    throw err;
+  }
+
+  // Si quedaron fotos adicionales (ej. 3 a 8 fotos), se suben de a una para jamás superar 1MB por petición
+  const idGenerado = (resultado && resultado.report && resultado.report.id) ? resultado.report.id : "";
+  const uidCliente = copiaReporte.clientUid || copiaReporte.id || "";
+  for (let j = 0; j < colaFotosExtra.length; j++) {
+    try {
+      const extraFd = new FormData();
+      extraFd.append("id", idGenerado);
+      extraFd.append("clientUid", uidCliente);
+      extraFd.append("fotos[]", colaFotosExtra[j].blob, colaFotosExtra[j].nombre);
+      await fetch(API_URL + "?action=upload_photo", {
+        method: "POST",
+        body: extraFd
+      });
+    } catch (e) {}
+  }
+
+  return resultado;
+}
+
+async function enviar() {
+  let r;
+  try {
+    if ($("fotos").files.length > 0 && fotosComprimidas.length === 0) {
+      await previsualizarFotos();
+    }
+    r = build();
+  } catch (validErr) {
+    alert(validErr.message);
+    return;
+  }
+
+  const btn = $("btnEnviar");
+  btn.disabled = true;
+  btn.textContent = "ENVIANDO REPORTE...";
+
+  try {
+    if (!navigator.onLine) throw new Error("offline");
+    const res = await enviarReporteAlServidor(r);
+    const folioOficial = (res && res.report && res.report.id) ? res.report.id : "";
+    $("status").className = "status ok";
+    $("status").innerHTML = `<strong>✓ Reporte ${esc(folioOficial)} recibido por recepción central.</strong> (${esc(r.lugar)} · ${fotosComprimidas.length} fotos)`;
+    limpiar();
+  } catch (e) {
+    await guardarPendiente(r);
+    $("status").className = "status warn";
+    $("status").innerHTML = `<strong>📵 Guardado en el teléfono (${(r.fotosBase64 || []).length} fotos incluidas).</strong> Se enviará automáticamente y recibirá su folio al recuperar señal.`;
+    limpiar();
+    await pend();
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "ENVIAR REPORTE";
+  }
+}
+
+function limpiar() {
+  $("trabajo").value = "";
+  $("mat").innerHTML = "";
+  $("maq").innerHTML = "";
+  $("fotos").value = "";
+  $("fotoPreview").innerHTML = "";
+  fotosComprimidas = [];
+  if ($("tipoHorario")) $("tipoHorario").value = "Normal";
+  $("otro").checked = false;
+  toggleOtro();
+}
+
+async function pend() {
+  const a = await obtenerPendientes();
+  $("btnSyncManual").classList.toggle("hidden", a.length === 0);
+  $("pend").innerHTML = a.length
+    ? a
+        .map(
+          r => `<div class="report">
+            <b>${esc(r.lugar)}</b> <span class="badge Pendiente">⏳ Pendiente de señal (${(r.fotosBase64 || []).length} fotos)</span><br>
+            ${esc(r.fechaInicio)} · ${esc(r.horaInicio)}–${esc(r.horaTermino)} · 👷 ${esc(r.trabajador || "")}<br>
+            <span class="muted">${esc(r.trabajo)}</span>
+          </div>`
+        )
+        .join("")
+    : "Sin pendientes.";
+}
+
+async function sync(manual = false) {
+  if (isSyncing) return;
+  if (!navigator.onLine && !manual) return;
+  const pendientes = await obtenerPendientes();
+  if (!pendientes.length) return;
+
+  isSyncing = true;
+  const btn = $("btnSyncManual");
+  if (btn) btn.textContent = "⏳ Sincronizando...";
+
+  let enviados = 0;
+  let ultimoError = "";
+  for (const r of pendientes) {
+    try {
+      await enviarReporteAlServidor(r);
+      await eliminarPendiente(r.id);
+      enviados++;
+    } catch (e) {
+      ultimoError = e && e.message ? e.message : "";
+    }
+  }
+
+  if (btn) btn.textContent = "🔄 Reintentar ahora";
+  isSyncing = false;
+  await pend();
+
+  if (enviados > 0) {
+    $("status").className = "status ok";
+    $("status").innerHTML = `<strong>✓ Se sincronizaron automáticamente ${enviados} reporte(s) pendiente(s) con la central.</strong>`;
+  } else if (manual) {
+    alert("Aún no se pudo sincronizar con el servidor" + (ultimoError ? " (" + ultimoError + ")" : "") + ". Los reportes siguen guardados de forma segura en el teléfono.");
+  }
+}
+
+// --- LOGÍSTICA: GESTIÓN, EDICIÓN, ELIMINACIÓN, FICHA PDF Y COTIZACIÓN MYC ---
+async function verificarPin() {
+  const pin = $("pinInput").value.trim();
+  if (!pin) return;
+  try {
+    const resp = await fetch(API_URL + "?action=auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pin })
+    });
+    if (resp.ok) {
+      sessionStorage.setItem("adminPinTerreno", pin);
+      $("pinError").classList.add("hidden");
+      $("pinCard").classList.add("hidden");
+      $("panelLogistica").classList.remove("hidden");
+      cargar();
+    } else {
+      $("pinError").classList.remove("hidden");
+    }
+  } catch (e) {
+    alert("No se pudo conectar con el servidor para validar el PIN.");
+  }
+}
+
+function calcularHorasTrabajo(r) {
+  try {
+    const [h1, m1] = String(r.horaInicio || "00:00").split(":").map(Number);
+    const [h2, m2] = String(r.horaTermino || "00:00").split(":").map(Number);
+    const f1 = new Date((r.fechaInicio || "2026-01-01") + "T00:00:00");
+    const f2 = new Date((r.fechaTermino || r.fechaInicio || "2026-01-01") + "T00:00:00");
+    const dias = Math.max(0, Math.round((f2 - f1) / 86400000));
+    let diffHoras = (h2 + m2 / 60) - (h1 + m1 / 60) + dias * 24;
+    if (diffHoras < 0) diffHoras += 24;
+    return Math.round(diffHoras * 100) / 100;
+  } catch (e) {
+    return 0;
+  }
+}
+
+function calcularDiasTrabajo(r) {
+  try {
+    const f1 = new Date((r.fechaInicio || "2026-01-01") + "T00:00:00");
+    const f2 = new Date((r.fechaTermino || r.fechaInicio || "2026-01-01") + "T00:00:00");
+    const dias = Math.max(1, Math.round((f2 - f1) / 86400000) + 1);
+    return dias;
+  } catch (e) {
+    return 1;
+  }
+}
+
+// --- MOTOR INTERNO DE ANÁLISIS HORARIO Y PAGO ADICIONAL (EXCLUSIVO LOGÍSTICA) ---
+// Horario habitual: Lunes a Jueves 08:00 a 17:30 | Viernes 08:00 a 17:00
+// - Inicia antes de las 08:00 en día hábil -> Hora Extra
+// - Inicia después del horario habitual (>17:30 L-J o >17:00 Vie) -> Emergencia
+// - Se extiende más allá de las 17:30 (o 17:00 Vie) habiendo iniciado en horario -> Marcador >17:30 + Hora Extra
+// - Sábado, Domingo o Festivo -> Emergencia + Marcador activo
+const FERIADOS_FIJOS_CL = new Set([
+  "01-01", "05-01", "05-21", "06-29", "07-16", "08-15", "09-18", "09-19", "10-31", "11-01", "12-08", "12-25"
+]);
+const FERIADOS_MOVILES_CL = new Set([
+  "2025-04-18", "2025-04-19", "2025-06-20", "2025-10-12", "2025-11-16", "2025-12-14",
+  "2026-04-03", "2026-04-04", "2026-06-21", "2026-06-29", "2026-09-20", "2026-10-12",
+  "2027-03-26", "2027-03-27", "2027-06-21", "2027-06-28", "2027-09-17", "2027-10-11", "2027-11-02"
+]);
+
+function esFeriadoChile(fechaIso) {
+  if (!fechaIso) return false;
+  const s = String(fechaIso).trim();
+  if (FERIADOS_MOVILES_CL.has(s)) return true;
+  const mmdd = s.slice(5, 10);
+  return FERIADOS_FIJOS_CL.has(mmdd);
+}
+
+function formatearMinutos(min) {
+  const m = Math.max(0, Math.round(min));
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  if (h > 0 && r > 0) return `${h}h ${r}m`;
+  if (h > 0) return `${h}h`;
+  return `${r}m`;
+}
+
+function analizarHorarioLogistica(r) {
+  const declarado = (r.tipoHorario && String(r.tipoHorario).trim() === "Emergencia") ? "Emergencia" : "Normal";
+  const fIni = String(r.fechaInicio || "").trim();
+  const fTer = String(r.fechaTermino || fIni).trim();
+  const [h1, m1] = String(r.horaInicio || "08:00").split(":").map(Number);
+  const [h2, m2] = String(r.horaTermino || "17:30").split(":").map(Number);
+  const minInicio = (Number.isNaN(h1) ? 8 : h1) * 60 + (Number.isNaN(m1) ? 0 : m1);
+  const minTerminoBase = (Number.isNaN(h2) ? 17 : h2) * 60 + (Number.isNaN(m2) ? 30 : m2);
+  const cruzaDia = (fTer > fIni) || (minTerminoBase < minInicio);
+  const minTerminoEfectivo = cruzaDia ? (minTerminoBase + 1440) : minTerminoBase;
+
+  let diaSemana = 1;
+  let nombreDia = "Día hábil";
+  const partes = fIni.split("-").map(Number);
+  if (partes.length === 3 && !Number.isNaN(partes[0])) {
+    const dt = new Date(partes[0], partes[1] - 1, partes[2]);
+    diaSemana = dt.getDay();
+    const nombres = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+    nombreDia = nombres[diaSemana] || "Día hábil";
+  }
+
+  const esSabado = diaSemana === 6;
+  const esDomingo = diaSemana === 0;
+  const esFestivo = esFeriadoChile(fIni) || esFeriadoChile(fTer);
+  const esFinDeSemanaOFestivo = esSabado || esDomingo || esFestivo;
+
+  // Horario habitual: Lunes a Jueves 08:00 (480) a 17:30 (1050) | Viernes 08:00 (480) a 17:00 (1020)
+  const minEntradaHabitual = 480; // 08:00
+  const minSalidaHabitual = (diaSemana === 5) ? 1020 : 1050; // Viernes 17:00, Lun-Jue 17:30
+  const txtSalidaHabitual = (diaSemana === 5) ? "17:00" : "17:30";
+
+  const supera1730 = minTerminoEfectivo > 1050;
+  const superaSalidaHabitual = minTerminoEfectivo > minSalidaHabitual;
+  const iniciaAntes0800 = minInicio < minEntradaHabitual;
+  const iniciaDespuesSalida = minInicio >= minSalidaHabitual;
+
+  const alertas = [];
+  let categoria = "NORMAL"; // "EMERGENCIA" | "HORA_EXTRA" | "NORMAL"
+  let etiquetaPago = "✅ HORARIO HABITUAL (Sin recargo)";
+  let marcador1730Texto = "";
+  let tieneMarcador = false;
+
+  if (esFinDeSemanaOFestivo) {
+    categoria = "EMERGENCIA";
+    tieneMarcador = true;
+    const motivoDia = esFestivo ? `Festivo (${nombreDia})` : nombreDia;
+    etiquetaPago = `🚨 PAGO EMERGENCIA (${motivoDia})`;
+    marcador1730Texto = `🚩 ${motivoDia.toUpperCase()}${supera1730 ? ` + EXTENDIDO > 17:30 (${r.horaTermino})` : ""}`;
+    alertas.push(`Trabajo en ${motivoDia}: corresponde pago íntegro como Emergencia (${calcularHorasTrabajo(r)} hrs).`);
+  } else if (iniciaDespuesSalida) {
+    categoria = "EMERGENCIA";
+    tieneMarcador = true;
+    etiquetaPago = `🚨 PAGO EMERGENCIA (Inició después de las ${txtSalidaHabitual})`;
+    marcador1730Texto = `🚩 INICIO POST-HORARIO (${r.horaInicio}–${r.horaTermino})`;
+    alertas.push(`Comenzó a las ${r.horaInicio} (después del cierre habitual de las ${txtSalidaHabitual} del ${nombreDia}): se paga como Emergencia.`);
+  } else {
+    if (iniciaAntes0800) {
+      categoria = "HORA_EXTRA";
+      tieneMarcador = true;
+      const minPrevios = minEntradaHabitual - minInicio;
+      alertas.push(`Comenzó antes de las 08:00 (${r.horaInicio}): +${formatearMinutos(minPrevios)} de Hora Extra matinal.`);
+    }
+    if (superaSalidaHabitual) {
+      categoria = "HORA_EXTRA";
+      tieneMarcador = true;
+      const minPost = minTerminoEfectivo - minSalidaHabitual;
+      marcador1730Texto = supera1730
+        ? `🚩 EXTENDIDO > 17:30 HRS (hasta ${r.horaTermino}, +${formatearMinutos(minTerminoEfectivo - 1050)})`
+        : `🚩 EXTENDIDO > 17:00 VIE (hasta ${r.horaTermino}, +${formatearMinutos(minPost)})`;
+      alertas.push(`Se extendió después de las ${txtSalidaHabitual} (${nombreDia}): +${formatearMinutos(minPost)} de Hora Extra vespertina.`);
+    }
+    if (categoria === "HORA_EXTRA") {
+      etiquetaPago = "⏰ PAGO HORA EXTRA";
+    } else if (declarado === "Emergencia") {
+      categoria = "EMERGENCIA";
+      tieneMarcador = true;
+      etiquetaPago = "🚨 PAGO EMERGENCIA (Declarado por trabajador)";
+      marcador1730Texto = "🚩 DECLARADO EMERGENCIA EN TERRENO";
+      alertas.push(`Marcado manualmente como Emergencia por el trabajador (${nombreDia} ${r.horaInicio}–${r.horaTermino}).`);
+    }
+  }
+
+  return {
+    declarado,
+    nombreDia,
+    categoria,
+    tieneMarcador,
+    etiquetaPago,
+    marcador1730Texto,
+    detalle: alertas.length ? alertas.join(" | ") : `Dentro de jornada habitual (${nombreDia} 08:00–${txtSalidaHabitual}).`
+  };
+}
+
+async function cargar() {
+  const pin = sessionStorage.getItem("adminPinTerreno") || "";
+  try {
+    const p = new URLSearchParams();
+    [
+      ["q", "q"],
+      ["desde", "desde"],
+      ["hasta", "hasta"],
+      ["estado", "est"]
+    ].forEach(a => $(a[1]).value && p.set(a[0], $(a[1]).value));
+
+    const x = await fetch(API_URL + "?" + p.toString(), {
+      headers: { "X-Admin-Pin": pin }
+    });
+    if (x.status === 401) {
+      sessionStorage.removeItem("adminPinTerreno");
+      abrirLogistica();
+      return;
+    }
+    if (!x.ok) throw new Error();
+    const d = await x.json();
+    const todosRecibidos = Array.isArray(d) ? d : [];
+
+    // Filtro interno de horario (exclusivo de Logística)
+    const filtroHor = $("filtroHorario") ? $("filtroHorario").value : "";
+    ultimosReportesCargados = todosRecibidos.filter(r => {
+      if (!filtroHor) return true;
+      const info = analizarHorarioLogistica(r);
+      if (filtroHor === "MARCADOR") return info.tieneMarcador;
+      if (filtroHor === "EMERGENCIA") return info.categoria === "EMERGENCIA";
+      if (filtroHor === "HORA_EXTRA") return info.categoria === "HORA_EXTRA";
+      if (filtroHor === "NORMAL") return info.categoria === "NORMAL";
+      return true;
+    });
+
+    $("mt").textContent = ultimosReportesCargados.length;
+    const dNow = new Date();
+    const h = new Date(dNow - dNow.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    $("mh").textContent = ultimosReportesCargados.filter(r => r.fechaInicio === h).length;
+    $("mp").textContent = ultimosReportesCargados.filter(r => r.estado === "En proceso").length;
+    $("mpe").textContent = ultimosReportesCargados.filter(r => r.estado === "Pendiente").length;
+    if ($("mext")) {
+      $("mext").textContent = ultimosReportesCargados.filter(r => analizarHorarioLogistica(r).tieneMarcador).length;
+    }
+
+    $("lista").innerHTML = ultimosReportesCargados.length
+      ? ultimosReportesCargados
+          .map((r, idx) => {
+            const matHtml = (r.materiales || []).length
+              ? `<div class="sublist"><b>Materiales:</b> ${(r.materiales || []).map(m => `${esc(m.cantidad)} ${esc(m.unidad)} ${esc(m.descripcion)}`).join(" · ")}</div>`
+              : "";
+            const maqHtml = (r.maquinaria || []).length
+              ? `<div class="sublist"><b>Maquinaria/Equipos:</b> ${(r.maquinaria || []).map(m => `${esc(m.cantidad)} ${esc(m.unidad)} ${esc(m.descripcion)}`).join(" · ")}</div>`
+              : "";
+            const estClass = String(r.estado || "").replace(/\s+/g, "-");
+            const hrs = calcularHorasTrabajo(r);
+            const infoHor = analizarHorarioLogistica(r);
+            const boxClass = infoHor.categoria === "EMERGENCIA" ? "emergencia" : (infoHor.categoria === "HORA_EXTRA" ? "hora-extra" : "");
+            const pillClass = infoHor.categoria === "EMERGENCIA" ? "emerg" : (infoHor.categoria === "HORA_EXTRA" ? "extra" : "normal");
+
+            return `<div class="report" id="rep-${idx}">
+              <h3>
+                <span><span class="folio-tag">${esc(r.id)}</span>📍 ${esc(r.lugar)}</span>
+                <span class="badge ${esc(estClass)}">${esc(r.estado)}</span>
+              </h3>
+              <p><b>👷 Generado por:</b> ${esc(r.trabajador || "No indicado")} · <b>Cuadrilla:</b> ${esc(r.personas)} pers. · <b>Duración:</b> ${hrs} hrs${r.solicita ? ` · <b>Solicita:</b> ${esc(r.solicita)}` : ""}</p>
+              <p><b>📅 Fecha:</b> ${esc(r.fechaInicio)} (${esc(infoHor.nombreDia)}) al ${esc(r.fechaTermino || r.fechaInicio)} · <b>🕒 Horario:</b> ${esc(r.horaInicio)}–${esc(r.horaTermino)}</p>
+              <div class="log-internal-box ${boxClass}" title="Información confidencial exclusiva de Logística (no visible para trabajador ni cliente)">
+                <span style="font-weight:700;color:#475569">🔒 Control Horario (Solo Logística):</span>
+                <span class="log-pill ${pillClass}">${esc(infoHor.etiquetaPago)}</span>
+                ${infoHor.marcador1730Texto ? `<span class="log-pill marker-1730">${esc(infoHor.marcador1730Texto)}</span>` : ""}
+                <span class="log-pill normal">Declarado: ${esc(infoHor.declarado)}</span>
+                <span style="width:100%;color:#334155;font-size:12px;margin-top:2px">${esc(infoHor.detalle)}</span>
+              </div>
+              <p>${esc(r.trabajo)}</p>
+              ${matHtml}
+              ${maqHtml}
+              ${
+                (r.fotos || []).length
+                  ? `<div class="photos">${r.fotos.map(f => `<a href="${esc(f.url)}" target="_blank"><img src="${esc(f.url)}" loading="lazy"></a>`).join("")}</div>`
+                  : `<p class="muted">Sin fotografías adjuntas</p>`
+              }
+              <div class="report-actions">
+                <button type="button" class="secondary btn-sm" onclick="imprimirFicha(${idx})">📄 Ficha PDF</button>
+                <button type="button" class="success btn-sm" onclick="exportarExcelIndividual(${idx})">📊 Excel Cotización MYC</button>
+                <button type="button" class="secondary btn-sm" onclick="mostrarEdicion(${idx})">✏️ Editar / Estado</button>
+                <button type="button" class="danger btn-sm" onclick="eliminarReporte('${esc(r.id)}')">🗑️ Eliminar</button>
+              </div>
+              <div id="editBox-${idx}" class="edit-box hidden">
+                <div class="row">
+                  <div>
+                    <label>Estado</label>
+                    <select id="editEst-${idx}">
+                      <option ${r.estado === "Terminado" ? "selected" : ""}>Terminado</option>
+                      <option ${r.estado === "En proceso" ? "selected" : ""}>En proceso</option>
+                      <option ${r.estado === "Pendiente" ? "selected" : ""}>Pendiente</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label>Tipo de horario (Declarado)</label>
+                    <select id="editTipoHor-${idx}">
+                      <option value="Normal" ${(r.tipoHorario || "Normal") === "Normal" ? "selected" : ""}>Normal</option>
+                      <option value="Emergencia" ${r.tipoHorario === "Emergencia" ? "selected" : ""}>Emergencia</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="row" style="margin-top:8px">
+                  <div>
+                    <label>Generado por (Trabajador)</label>
+                    <input id="editTrab-${idx}" value="${esc(r.trabajador || "")}">
+                  </div>
+                  <div>
+                    <label>Solicita (Mandante / Supervisor Cliente)</label>
+                    <input id="editSol-${idx}" placeholder="Ej: MARCELO YAÑEZ" value="${esc(r.solicita || "")}">
+                  </div>
+                </div>
+                <div style="margin-top:8px">
+                  <label>Trabajo realizado</label>
+                  <textarea id="editDesc-${idx}" style="min-height:70px">${esc(r.trabajo || "")}</textarea>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:10px">
+                  <button type="button" class="primary btn-sm" style="width:auto" onclick="guardarEdicion('${esc(r.id)}', ${idx})">💾 Guardar cambios</button>
+                  <button type="button" class="secondary btn-sm" onclick="mostrarEdicion(${idx})">Cancelar</button>
+                </div>
+              </div>
+            </div>`;
+          })
+          .join("")
+      : "No hay reportes para los filtros seleccionados.";
+  } catch (e) {
+    $("lista").innerHTML = "Recepción central no disponible en este momento.";
+  }
+}
+
+function mostrarEdicion(idx) {
+  const box = $("editBox-" + idx);
+  if (box) box.classList.toggle("hidden");
+}
+
+async function guardarEdicion(id, idx) {
+  const pin = sessionStorage.getItem("adminPinTerreno") || "";
+  const estado = $("editEst-" + idx).value;
+  const tipoHorario = $("editTipoHor-" + idx) ? $("editTipoHor-" + idx).value : "Normal";
+  const trabajador = $("editTrab-" + idx).value.trim();
+  const solicita = $("editSol-" + idx).value.trim();
+  const trabajo = $("editDesc-" + idx).value.trim();
+  try {
+    const resp = await fetch(API_URL + "?action=update", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Pin": pin
+      },
+      body: JSON.stringify({ id, estado, tipoHorario, trabajador, solicita, trabajo })
+    });
+    if (!resp.ok) throw new Error();
+    await cargar();
+  } catch (e) {
+    alert("No se pudo actualizar el reporte.");
+  }
+}
+
+async function eliminarReporte(id) {
+  if (!confirm(`¿Seguro que deseas eliminar permanentemente el reporte ${id} y sus fotografías?`)) return;
+  const pin = sessionStorage.getItem("adminPinTerreno") || "";
+  try {
+    const resp = await fetch(API_URL + "?action=delete", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Pin": pin
+      },
+      body: JSON.stringify({ id })
+    });
+    if (!resp.ok) throw new Error();
+    await cargar();
+  } catch (e) {
+    alert("No se pudo eliminar el reporte.");
+  }
+}
+
+function imprimirFicha(idx) {
+  const r = ultimosReportesCargados[idx];
+  if (!r) return;
+  const baseHref = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "/");
+  const hrs = calcularHorasTrabajo(r);
+
+  const matRows = (r.materiales || []).length
+    ? (r.materiales || []).map(m => `<tr><td>${esc(m.cantidad)}</td><td>${esc(m.unidad)}</td><td>${esc(m.descripcion)}</td></tr>`).join("")
+    : `<tr><td colspan="3" style="color:#64748b">Sin materiales registrados</td></tr>`;
+
+  const maqRows = (r.maquinaria || []).length
+    ? (r.maquinaria || []).map(m => `<tr><td>${esc(m.cantidad)}</td><td>${esc(m.unidad)}</td><td>${esc(m.descripcion)}</td></tr>`).join("")
+    : `<tr><td colspan="3" style="color:#64748b">Sin maquinaria/equipos registrados</td></tr>`;
+
+  const fotosHtml = (r.fotos || []).length
+    ? `<div class="sec"><h3>Fotografías de Respaldo (${r.fotos.length})</h3><div class="pgrid">${r.fotos
+        .map(f => `<div class="pitem"><img src="${baseHref + esc(f.url).replace(/^\//, "")}"></div>`)
+        .join("")}</div></div>`
+    : "";
+
+  const win = window.open("", "_blank");
+  win.document.write(`<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<title>Ficha ${esc(r.id)} - ${esc(r.lugar)}</title>
+<style>
+  body{font-family:Segoe UI,Arial,sans-serif;color:#1f2937;margin:24px;font-size:13.5px}
+  .hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #17324d;padding-bottom:12px;margin-bottom:18px}
+  .brand{display:flex;align-items:center;gap:14px}
+  .brand img{width:68px;height:68px;object-fit:contain}
+  .brand h1{margin:0;color:#17324d;font-size:19px}
+  .brand p{margin:2px 0 0;color:#475569;font-size:11.5px;line-height:1.35}
+  .folio{text-align:right;font-size:12px}
+  .folio b{font-size:18px;color:#17324d;display:block}
+  table.meta{width:100%;border-collapse:collapse;margin-bottom:16px}
+  table.meta td,table.meta th{border:1px solid #cbd5e1;padding:8px 10px;text-align:left}
+  table.meta th{background:#f1f5f9;width:18%;font-size:12px;text-transform:uppercase;color:#334155}
+  .sec{margin-bottom:16px}
+  .sec h3{margin:0 0 6px;font-size:14px;color:#17324d;border-bottom:1px solid #e2e8f0;padding-bottom:4px;text-transform:uppercase}
+  .box{border:1px solid #cbd5e1;border-radius:6px;padding:10px 12px;background:#f8fafc;white-space:pre-wrap;line-height:1.45}
+  table.list{width:100%;border-collapse:collapse}
+  table.list th,table.list td{border:1px solid #cbd5e1;padding:6px 9px;text-align:left;font-size:12.5px}
+  table.list th{background:#f1f5f9}
+  .pgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
+  .pitem img{width:100%;max-height:260px;object-fit:contain;border:1px solid #cbd5e1;border-radius:6px;background:#fff}
+  .noprint{margin-bottom:16px;text-align:right}
+  .noprint button{background:#17324d;color:#fff;border:0;padding:9px 16px;border-radius:6px;font-weight:700;cursor:pointer}
+  @media print{.noprint{display:none}body{margin:10mm}}
+</style></head><body>
+<div class="noprint">
+  <button onclick="window.print()">🖨️ Imprimir / Guardar como PDF</button>
+</div>
+<div class="hdr">
+  <div class="brand">
+    <img src="${LOGO_MYC}">
+    <div>
+      <h1>INVERSIONES Y MANTENIMIENTO MYC SPA</h1>
+      <p>RUT: 77.547.271-5 · Hijuela 3b lote 370, Llavería, Las Cabras<br>Giro: Terminación y acabado de Edificios</p>
+    </div>
+  </div>
+  <div class="folio">
+    <b>FOLIO ${esc(r.id)}</b>
+    Estado: ${esc(r.estado)}<br>
+    Recibido: ${esc((r.createdAt || "").slice(0, 19).replace("T", " "))}
+  </div>
+</div>
+<table class="meta">
+  <tr>
+    <th>Cliente</th><td><b>AGRICOLA SUPER LTDA</b></td>
+    <th>Solicita</th><td>${esc(r.solicita || "—")}</td>
+  </tr>
+  <tr>
+    <th>Lugar / Plantel</th><td><b>${esc(r.lugar)}</b></td>
+    <th>Generado por</th><td><b>${esc(r.trabajador || "No indicado")}</b></td>
+  </tr>
+  <tr>
+    <th>Fecha Inicio</th><td>${esc(r.fechaInicio)} (${esc(r.horaInicio)} hrs)</td>
+    <th>Fecha Término</th><td>${esc(r.fechaTermino || r.fechaInicio)} (${esc(r.horaTermino)} hrs)</td>
+  </tr>
+  <tr>
+    <th>Personas Cuadrilla</th><td>${esc(r.personas)} persona(s) (${hrs} hrs trabajadas)</td>
+    <th>Horas-Hombre</th><td>${Math.round(hrs * Number(r.personas || 1) * 100) / 100} HH</td>
+  </tr>
+</table>
+<div class="sec">
+  <h3>Descripción del Trabajo Realizado</h3>
+  <div class="box">${esc(r.trabajo)}</div>
+</div>
+<div class="sec">
+  <h3>Materiales Utilizados</h3>
+  <table class="list"><thead><tr><th style="width:90px">Cantidad</th><th style="width:110px">Unidad</th><th>Descripción</th></tr></thead><tbody>${matRows}</tbody></table>
+</div>
+<div class="sec">
+  <h3>Maquinaria y Equipos</h3>
+  <table class="list"><thead><tr><th style="width:90px">Cantidad</th><th style="width:110px">Unidad</th><th>Descripción</th></tr></thead><tbody>${maqRows}</tbody></table>
+</div>
+${fotosHtml}
+</body></html>`);
+  win.document.close();
+}
+
+// --- GENERADOR NATIVO DE LIBRO EXCEL (.XLSX) CON FORMATO OFICIAL "COTIZACION MYC SPA" ---
+function xmlEsc(s) {
+  return String(s == null ? "" : s)
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function colName(n) {
+  let s = "";
+  while (n > 0) {
+    const m = (n - 1) % 26;
+    s = String.fromCharCode(65 + m) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
+}
+
+function buildSheetXml(rows, colWidths) {
+  let colsXml = "";
+  if (colWidths && colWidths.length) {
+    colsXml = "<cols>" + colWidths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join("") + "</cols>";
+  }
+  let sheetData = "<sheetData>";
+  rows.forEach((row, rIdx) => {
+    const rowNum = rIdx + 1;
+    sheetData += `<row r="${rowNum}">`;
+    row.forEach((cell, cIdx) => {
+      if (cell === null || cell === undefined) return;
+      const ref = colName(cIdx + 1) + rowNum;
+      const sAttr = cell.s ? ` s="${cell.s}"` : "";
+      if (cell.f) {
+        sheetData += `<c r="${ref}"${sAttr}><f>${xmlEsc(cell.f)}</f></c>`;
+      } else if (typeof cell.v === "number" && !Number.isNaN(cell.v)) {
+        sheetData += `<c r="${ref}" t="n"${sAttr}><v>${cell.v}</v></c>`;
+      } else {
+        sheetData += `<c r="${ref}" t="inlineStr"${sAttr}><is><t>${xmlEsc(cell.v)}</t></is></c>`;
+      }
+    });
+    sheetData += "</row>";
+  });
+  sheetData += "</sheetData>";
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${colsXml}${sheetData}</worksheet>`;
+}
+
+function createZipBlob(files) {
+  const encoder = new TextEncoder();
+  const fileEntries = files.map(f => ({
+    nameBytes: encoder.encode(f.name),
+    dataBytes: encoder.encode(f.content)
+  }));
+
+  const crcTable = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    crcTable[n] = c >>> 0;
+  }
+  function crc32(bytes) {
+    let c = 0xffffffff;
+    for (let i = 0; i < bytes.length; i++) c = crcTable[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  }
+
+  const parts = [];
+  const centralDir = [];
+  let offset = 0;
+
+  fileEntries.forEach(entry => {
+    const crc = crc32(entry.dataBytes);
+    const size = entry.dataBytes.length;
+    const nameLen = entry.nameBytes.length;
+
+    const localHeader = new Uint8Array(30 + nameLen);
+    const lv = new DataView(localHeader.buffer);
+    lv.setUint32(0, 0x04034b50, true);
+    lv.setUint16(4, 20, true);
+    lv.setUint16(6, 0x0800, true);
+    lv.setUint16(8, 0, true);
+    lv.setUint16(10, 0, true);
+    lv.setUint16(12, 0, true);
+    lv.setUint32(14, crc, true);
+    lv.setUint32(18, size, true);
+    lv.setUint32(22, size, true);
+    lv.setUint16(26, nameLen, true);
+    lv.setUint16(28, 0, true);
+    localHeader.set(entry.nameBytes, 30);
+
+    parts.push(localHeader, entry.dataBytes);
+
+    const cdHeader = new Uint8Array(46 + nameLen);
+    const cv = new DataView(cdHeader.buffer);
+    cv.setUint32(0, 0x02014b50, true);
+    cv.setUint16(4, 20, true);
+    cv.setUint16(6, 20, true);
+    cv.setUint16(8, 0x0800, true);
+    cv.setUint16(10, 0, true);
+    cv.setUint16(12, 0, true);
+    cv.setUint16(14, 0x2100, true);
+    cv.setUint32(16, crc, true);
+    cv.setUint32(20, size, true);
+    cv.setUint32(24, size, true);
+    cv.setUint16(28, nameLen, true);
+    cv.setUint16(30, 0, true);
+    cv.setUint16(32, 0, true);
+    cv.setUint16(34, 0, true);
+    cv.setUint16(36, 0, true);
+    cv.setUint32(38, 0, true);
+    cv.setUint32(42, offset, true);
+    cdHeader.set(entry.nameBytes, 46);
+    centralDir.push(cdHeader);
+
+    offset += localHeader.length + size;
+  });
+
+  const cdSize = centralDir.reduce((acc, b) => acc + b.length, 0);
+  const eocd = new Uint8Array(22);
+  const ev = new DataView(eocd.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(4, 0, true);
+  ev.setUint16(6, 0, true);
+  ev.setUint16(8, fileEntries.length, true);
+  ev.setUint16(10, fileEntries.length, true);
+  ev.setUint32(12, cdSize, true);
+  ev.setUint32(16, offset, true);
+  ev.setUint16(20, 0, true);
+
+  return new Blob([...parts, ...centralDir, eocd], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  });
+}
+
+function construirHojaCotizacionMYC(r) {
+  const hrs = calcularHorasTrabajo(r);
+  const dias = calcularDiasTrabajo(r);
+  const pers = Number(r.personas || 1);
+  const baseHref = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "/");
+
+  const rows = [
+    [],
+    [null, { v: "INVERSIONES Y MANTENIMIENTO MYC SPA", s: 1 }, { v: "RUT: 77.547.271-5 | Hijuela 3b lote 370, Llavería, Las Cabras", s: 6 }, null, null, null, null],
+    [null, { v: "Giro: Terminación y acabado de Edificios", s: 3 }, { v: `Ejecutado en terreno por: ${r.trabajador || "No indicado"} (${hrs} hrs / ${pers} pers.)`, s: 3 }, null, null, null, null],
+    [],
+    [null, { v: "COTIZACION N°", s: 6 }, { v: r.id || "", s: 3 }, null, { v: "ESTADO REPORTE:", s: 6 }, { v: r.estado || "", s: 3 }, null],
+    [null, { v: "CLIENTE:", s: 6 }, { v: "AGRICOLA SUPER LTDA", s: 3 }, null, null, null, null],
+    [null, { v: "LUGAR:", s: 6 }, { v: (r.lugar || "").toUpperCase(), s: 3 }, null, null, null, null],
+    [null, { v: "FECHA:", s: 6 }, { v: r.fechaInicio || "", s: 3 }, null, { v: "HORARIO:", s: 6 }, { v: `${r.horaInicio || ""} a ${r.horaTermino || ""}`, s: 3 }, null],
+    [null, { v: "SOLICITA:", s: 6 }, { v: (r.solicita || "").toUpperCase(), s: 3 }, null, null, null, null],
+    [null, { v: "DESCRIPCION TRABAJOS:", s: 6 }, null, null, null, null, null],
+    [null, { v: (r.trabajo || "").toUpperCase(), s: 3 }, null, null, null, null, null],
+    [],
+    [
+      null,
+      { v: "ITEM", s: 1 },
+      { v: "PARTIDAS", s: 1 },
+      { v: "UNID.", s: 1 },
+      { v: "CANT.", s: 1 },
+      { v: "PRECIO UNIT. $", s: 1 },
+      { v: "TOTAL $", s: 1 }
+    ]
+  ];
+
+  // --- BLOQUE 1: MANO DE OBRA ---
+  const rowHeader1 = rows.length + 1;
+  const startB1 = rowHeader1 + 1;
+  const endB1 = startB1 + 4;
+
+  rows.push([
+    null,
+    { v: 1, s: 2 },
+    { v: "MANO DE OBRA", s: 2 },
+    { v: "", s: 2 },
+    { v: "", s: 2 },
+    { v: "", s: 2 },
+    { f: `SUM(G${startB1}:G${endB1})`, s: 8 }
+  ]);
+
+  const r1_1 = rows.length + 1;
+  rows.push([
+    null,
+    { v: "1.1", s: 3 },
+    { v: `MANO OBRA ${pers} PERSONAS (${hrs} HRS)`, s: 3 },
+    { v: "DIAS", s: 3 },
+    { v: dias, s: 3 },
+    { v: 0, s: 4 },
+    { f: `E${r1_1}*F${r1_1}`, s: 4 }
+  ]);
+
+  for (let i = 2; i <= 5; i++) {
+    const rn = rows.length + 1;
+    rows.push([
+      null,
+      { v: `1.${i}`, s: 3 },
+      { v: "", s: 3 },
+      { v: "", s: 3 },
+      { v: 0, s: 3 },
+      { v: 0, s: 4 },
+      { f: `E${rn}*F${rn}`, s: 4 }
+    ]);
+  }
+
+  rows.push([]);
+
+  // --- BLOQUE 2: TRASLADOS PERSONAL/MAQUINARIAS ---
+  const rowHeader2 = rows.length + 1;
+  const startB2 = rowHeader2 + 1;
+  const maqReportadas = r.maquinaria || [];
+  const totalRowsB2 = Math.max(5, maqReportadas.length + 2);
+  const endB2 = startB2 + totalRowsB2 - 1;
+
+  rows.push([
+    null,
+    { v: 2, s: 2 },
+    { v: "TRASLADOS PERSONAL/MAQUINARIAS", s: 2 },
+    { v: "", s: 2 },
+    { v: "", s: 2 },
+    { v: "", s: 2 },
+    { f: `SUM(G${startB2}:G${endB2})`, s: 8 }
+  ]);
+
+  const r2_1 = rows.length + 1;
+  rows.push([
+    null,
+    { v: "2.1", s: 3 },
+    { v: "TRASLADO PERSONAL", s: 3 },
+    { v: "VIAJE", s: 3 },
+    { v: dias, s: 3 },
+    { v: 0, s: 4 },
+    { f: `E${r2_1}*F${r2_1}`, s: 4 }
+  ]);
+
+  let subIdx2 = 2;
+  maqReportadas.forEach(m => {
+    const rn = rows.length + 1;
+    rows.push([
+      null,
+      { v: `2.${subIdx2++}`, s: 3 },
+      { v: `TRASLADO ${(m.descripcion || "MAQUINARIA").toUpperCase()}`, s: 3 },
+      { v: "VIAJE", s: 3 },
+      { v: 1, s: 3 },
+      { v: 0, s: 4 },
+      { f: `E${rn}*F${rn}`, s: 4 }
+    ]);
+  });
+
+  while (subIdx2 <= totalRowsB2) {
+    const rn = rows.length + 1;
+    rows.push([
+      null,
+      { v: `2.${subIdx2++}`, s: 3 },
+      { v: "", s: 3 },
+      { v: "", s: 3 },
+      { v: 0, s: 3 },
+      { v: 0, s: 4 },
+      { f: `E${rn}*F${rn}`, s: 4 }
+    ]);
+  }
+
+  rows.push([]);
+
+  // --- BLOQUE 3: MATERIALES/MAQUINARIAS ---
+  const rowHeader3 = rows.length + 1;
+  const startB3 = rowHeader3 + 1;
+  const matReportados = r.materiales || [];
+  const itemsB3 = [
+    ...maqReportadas.map(m => ({
+      desc: (m.descripcion || "").toUpperCase(),
+      unid: (m.unidad || "HRS").toUpperCase(),
+      cant: parseFloat(String(m.cantidad || "1").replace(",", "."))
+    })),
+    ...matReportados.map(m => ({
+      desc: (m.descripcion || "").toUpperCase(),
+      unid: (m.unidad || "UN").toUpperCase(),
+      cant: parseFloat(String(m.cantidad || "1").replace(",", "."))
+    }))
+  ];
+  const totalRowsB3 = Math.max(12, itemsB3.length + 6);
+  const endB3 = startB3 + totalRowsB3 - 1;
+
+  rows.push([
+    null,
+    { v: 3, s: 2 },
+    { v: "MATERIALES/MAQUINARIAS", s: 2 },
+    { v: "", s: 2 },
+    { v: "", s: 2 },
+    { v: "", s: 2 },
+    { f: `SUM(G${startB3}:G${endB3})`, s: 8 }
+  ]);
+
+  let subIdx3 = 1;
+  itemsB3.forEach(it => {
+    const rn = rows.length + 1;
+    rows.push([
+      null,
+      { v: `3.${subIdx3++}`, s: 3 },
+      { v: it.desc, s: 3 },
+      { v: it.unid, s: 3 },
+      { v: Number.isNaN(it.cant) ? 1 : it.cant, s: 3 },
+      { v: 0, s: 4 },
+      { f: `E${rn}*F${rn}`, s: 4 }
+    ]);
+  });
+
+  while (subIdx3 <= totalRowsB3) {
+    const rn = rows.length + 1;
+    rows.push([
+      null,
+      { v: `3.${subIdx3++}`, s: 3 },
+      { v: "", s: 3 },
+      { v: "", s: 3 },
+      { v: 0, s: 3 },
+      { v: 0, s: 4 },
+      { f: `E${rn}*F${rn}`, s: 4 }
+    ]);
+  }
+
+  rows.push([]);
+
+  // --- RESUMEN DE COSTOS DE OBRAS ---
+  rows.push([null, null, { v: "RESUMEN DE COSTOS DE OBRAS", s: 1 }, null, null, null, null]);
+
+  const rowCostoDirecto = rows.length + 1;
+  rows.push([
+    null,
+    null,
+    { v: "TOTAL COSTO DIRECTO", s: 6 },
+    null,
+    null,
+    null,
+    { f: `G${rowHeader1}+G${rowHeader2}+G${rowHeader3}`, s: 5 }
+  ]);
+
+  const rowGG = rows.length + 1;
+  rows.push([
+    null,
+    null,
+    { v: "GASTOS GENERALES Y UTILIDADES (Ingresar % en celda amarilla)", s: 6 },
+    null,
+    null,
+    { v: 0, s: 7 },
+    { f: `ROUND(G${rowCostoDirecto}*F${rowGG},0)`, s: 4 }
+  ]);
+
+  const rowCostoNeto = rows.length + 1;
+  rows.push([
+    null,
+    null,
+    { v: "TOTAL COSTO NETO", s: 6 },
+    null,
+    null,
+    null,
+    { f: `SUM(G${rowCostoDirecto}:G${rowGG})`, s: 5 }
+  ]);
+
+  const rowIva = rows.length + 1;
+  rows.push([
+    null,
+    null,
+    { v: "IVA", s: 6 },
+    null,
+    null,
+    { v: 0.19, s: 7 },
+    { f: `ROUND(G${rowCostoNeto}*F${rowIva},0)`, s: 4 }
+  ]);
+
+  rows.push([
+    null,
+    null,
+    { v: "TOTAL PRESUPUESTO DE TRABAJO", s: 1 },
+    null,
+    null,
+    null,
+    { f: `G${rowCostoNeto}+G${rowIva}`, s: 5 }
+  ]);
+
+  if ((r.fotos || []).length) {
+    rows.push([]);
+    rows.push([null, { v: "FOTOGRAFÍAS DE RESPALDO EN TERRENO:", s: 6 }]);
+    (r.fotos || []).forEach((f, idx) => {
+      rows.push([null, { v: `Foto ${idx + 1}`, s: 3 }, { v: baseHref + String(f.url || "").replace(/^\//, ""), s: 3 }]);
+    });
+  }
+
+  return buildSheetXml(rows, [4, 12, 48, 12, 12, 18, 20]);
+}
+
+function generarDescargaXlsx(reportes, nombreArchivo) {
+  const sheets = [];
+
+  if (reportes.length > 1) {
+    const resRows = [
+      [{ v: "INVERSIONES Y MANTENIMIENTO MYC SPA - RESUMEN GENERAL DE LOGÍSTICA (USO INTERNO)", s: 1 }],
+      [],
+      [
+        { v: "Folio", s: 1 },
+        { v: "Fecha Inicio", s: 1 },
+        { v: "Día", s: 1 },
+        { v: "Fecha Término", s: 1 },
+        { v: "Horario", s: 1 },
+        { v: "Horas", s: 1 },
+        { v: "Tipo Horario (Declarado)", s: 1 },
+        { v: "Clasificación Pago (Interno)", s: 1 },
+        { v: "Marcador >17:30 / Sáb-Dom-Festivo", s: 1 },
+        { v: "Detalle Cálculo Horario (Interno)", s: 1 },
+        { v: "Lugar / Plantel", s: 1 },
+        { v: "Generado por", s: 1 },
+        { v: "Solicita", s: 1 },
+        { v: "Personas", s: 1 },
+        { v: "Estado", s: 1 },
+        { v: "Trabajo Realizado", s: 1 },
+        { v: "Materiales", s: 1 },
+        { v: "Maquinaria", s: 1 },
+        { v: "Fotos", s: 1 }
+      ]
+    ];
+
+    reportes.forEach(r => {
+      const hrs = calcularHorasTrabajo(r);
+      const infoHor = analizarHorarioLogistica(r);
+      const mat = (r.materiales || []).map(m => `${m.cantidad} ${m.unidad} ${m.descripcion}`).join(" | ");
+      const maq = (r.maquinaria || []).map(m => `${m.cantidad} ${m.unidad} ${m.descripcion}`).join(" | ");
+      resRows.push([
+        { v: r.id || "", s: 6 },
+        { v: r.fechaInicio || "", s: 3 },
+        { v: infoHor.nombreDia || "", s: 3 },
+        { v: r.fechaTermino || r.fechaInicio || "", s: 3 },
+        { v: `${r.horaInicio || ""} - ${r.horaTermino || ""}`, s: 3 },
+        { v: hrs, s: 3 },
+        { v: infoHor.declarado, s: 3 },
+        { v: infoHor.etiquetaPago, s: infoHor.tieneMarcador ? 7 : 3 },
+        { v: infoHor.marcador1730Texto || "—", s: infoHor.marcador1730Texto ? 7 : 3 },
+        { v: infoHor.detalle, s: 3 },
+        { v: r.lugar || "", s: 3 },
+        { v: r.trabajador || "", s: 3 },
+        { v: r.solicita || "", s: 3 },
+        { v: Number(r.personas || 1), s: 3 },
+        { v: r.estado || "", s: 3 },
+        { v: (r.trabajo || "").replace(/\r?\n/g, " "), s: 3 },
+        { v: mat, s: 3 },
+        { v: maq, s: 3 },
+        { v: (r.fotos || []).length, s: 3 }
+      ]);
+    });
+
+    sheets.push({
+      name: "Resumen General",
+      xml: buildSheetXml(resRows, [11, 13, 12, 13, 15, 9, 18, 28, 30, 42, 24, 22, 18, 10, 13, 40, 30, 30, 8])
+    });
+  }
+
+  const usedNames = new Set(sheets.map(s => s.name));
+  reportes.forEach((r, idx) => {
+    const cleanFolio = String(r.id || `Trabajo-${idx + 1}`).replace(/[\\/?*[\]:]/g, "-").slice(0, 10);
+    const cleanLugar = String(r.lugar || "").replace(/[\\/?*[\]:]/g, "").trim().slice(0, 18);
+    let tabName = `${cleanFolio} ${cleanLugar}`.trim().slice(0, 31) || `Trabajo ${idx + 1}`;
+    if (usedNames.has(tabName)) tabName = `${cleanFolio}-${idx + 1}`.slice(0, 31);
+    usedNames.add(tabName);
+
+    sheets.push({
+      name: tabName,
+      xml: construirHojaCotizacionMYC(r)
+    });
+  });
+
+  const files = [
+    {
+      name: "[Content_Types].xml",
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+  ${sheets.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("\n  ")}
+</Types>`
+    },
+    {
+      name: "_rels/.rels",
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`
+    },
+    {
+      name: "xl/workbook.xml",
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets>
+    ${sheets.map((s, i) => `<sheet name="${xmlEsc(s.name)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join("\n    ")}
+  </sheets>
+</workbook>`
+    },
+    {
+      name: "xl/_rels/workbook.xml.rels",
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  ${sheets.map((_, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join("\n  ")}
+  <Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`
+    },
+    {
+      name: "xl/styles.xml",
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <numFmts count="2">
+    <numFmt numFmtId="164" formatCode="$#,##0"/>
+    <numFmt numFmtId="165" formatCode="0.0%"/>
+  </numFmts>
+  <fonts count="4">
+    <font><sz val="11"/><name val="Calibri"/></font>
+    <font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+    <font><b/><sz val="11"/><color rgb="FF17324D"/><name val="Calibri"/></font>
+    <font><b/><sz val="12"/><color rgb="FF14532D"/><name val="Calibri"/></font>
+  </fonts>
+  <fills count="5">
+    <fill><patternFill patternType="none"/></fill>
+    <fill><patternFill patternType="gray125"/></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FF17324D"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFD9E2EC"/></patternFill></fill>
+    <fill><patternFill patternType="solid"><fgColor rgb="FFFEF3C7"/></patternFill></fill>
+  </fills>
+  <borders count="2">
+    <border><left/><right/><top/><bottom/><diagonal/></border>
+    <border>
+      <left style="thin"><color rgb="FFCBD5E1"/></left>
+      <right style="thin"><color rgb="FFCBD5E1"/></right>
+      <top style="thin"><color rgb="FFCBD5E1"/></top>
+      <bottom style="thin"><color rgb="FFCBD5E1"/></bottom>
+      <diagonal/>
+    </border>
+  </borders>
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  <cellXfs count="9">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+    <xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
+    <xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment wrapText="1" vertical="center"/></xf>
+    <xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/>
+    <xf numFmtId="164" fontId="3" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>
+    <xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
+    <xf numFmtId="165" fontId="2" fillId="4" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>
+    <xf numFmtId="164" fontId="2" fillId="3" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"/>
+  </cellXfs>
+</styleSheet>`
+    }
+  ];
+
+  sheets.forEach((s, i) => {
+    files.push({
+      name: `xl/worksheets/sheet${i + 1}.xml`,
+      content: s.xml
+    });
+  });
+
+  const blob = createZipBlob(files);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nombreArchivo;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function exportarExcelValorizacion() {
+  if (!ultimosReportesCargados.length) {
+    alert("No hay reportes en pantalla para exportar.");
+    return;
+  }
+  generarDescargaXlsx(
+    ultimosReportesCargados,
+    `Cotizaciones_MYC_Terreno_${new Date().toISOString().slice(0, 10)}.xlsx`
+  );
+}
+
+function exportarExcelIndividual(idx) {
+  const r = ultimosReportesCargados[idx];
+  if (!r) return;
+  const cleanLugar = String(r.lugar || "").replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 20);
+  generarDescargaXlsx([r], `COTIZACION_${r.id}_${cleanLugar}_MYC.xlsx`);
+}
+
+init();
+</script>
+</body>
+</html>

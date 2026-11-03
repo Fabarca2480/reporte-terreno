@@ -1,5 +1,12 @@
+# Dependencias y archivos temporales
 node_modules/
-.env
-*.log
-pruebas reporte de terreno copia funcional/
 *.zip
+*.log
+.DS_Store
+Thumbs.db
+
+# Datos locales y fotos de prueba
+uploads/*
+!uploads/.gitkeep
+subir-a-cpanel/uploads/*
+!subir-a-cpanel/uploads/.gitkeep
