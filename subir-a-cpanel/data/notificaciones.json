@@ -1,0 +1,30 @@
+{
+  "subfolderName": "notificacion reports",
+  "emails": [
+    "c.huerta@mycmantencion.cl",
+    "f.abarca@mycmantencion.cl",
+    "j.miranda@mycmantencion.cl"
+  ],
+  "phones": [
+    {
+      "phone": "+56968352481",
+      "apikey": "",
+      "nombre": "Teléfono 1"
+    },
+    {
+      "phone": "+56953945041",
+      "apikey": "",
+      "nombre": "Teléfono 2"
+    },
+    {
+      "phone": "+56953236814",
+      "apikey": "",
+      "nombre": "Teléfono 3"
+    },
+    {
+      "phone": "+56995469653",
+      "apikey": "",
+      "nombre": "Teléfono 4"
+    }
+  ]
+}
