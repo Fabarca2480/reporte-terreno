@@ -312,7 +312,20 @@ footer a:hover{opacity:1}
       </div>
 
       <div class="card">
-        <label>Reportes recibidos en central</label>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+          <label style="margin:0">Reportes recibidos en central</label>
+          <span class="muted" style="font-size:12px">☑️ Marca 2 o más reportes para unificarlos en un solo trabajo consolidado.</span>
+        </div>
+        <div id="unifyBar" class="hidden" style="background:#eef2ff;border:2px solid #6366f1;border-radius:11px;padding:11px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <div>
+            <b id="unifyCountText" style="color:#312e81;font-size:14px">🔗 0 reportes seleccionados</b>
+            <div class="muted" style="font-size:12px;color:#4338ca">Se unirán horarios, cuadrillas, descripciones, materiales, maquinarias y fotos en 1 solo reporte de Logística.</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button type="button" class="primary btn-sm" style="width:auto;background:#4f46e5" onclick="unificarSeleccionados()">🔗 Unificar en 1 Reporte</button>
+            <button type="button" class="secondary btn-sm" onclick="limpiarSeleccionUnificar()">Cancelar selección</button>
+          </div>
+        </div>
         <div id="lista" class="muted">Cargando...</div>
       </div>
     </div>
@@ -622,7 +635,7 @@ function dataUrlToBlob(dataUrl) {
 async function init() {
   $("hdrLogo").src = LOGO_MYC;
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js?v=10").then(reg => {
+    navigator.serviceWorker.register("sw.js?v=11").then(reg => {
       try { reg.update(); } catch (e) {}
     }).catch(() => {});
   }
@@ -942,7 +955,7 @@ async function verificarPin() {
   }
 }
 
-function calcularHorasTrabajo(r) {
+function calcularHorasTramoSimple(r) {
   try {
     const [h1, m1] = String(r.horaInicio || "00:00").split(":").map(Number);
     const [h2, m2] = String(r.horaTermino || "00:00").split(":").map(Number);
@@ -957,8 +970,20 @@ function calcularHorasTrabajo(r) {
   }
 }
 
+function calcularHorasTrabajo(r) {
+  if (r && r.esUnificado && Array.isArray(r.jornadasUnificadas) && r.jornadasUnificadas.length > 1) {
+    const suma = r.jornadasUnificadas.reduce((acc, j) => acc + calcularHorasTramoSimple(j), 0);
+    return Math.round(suma * 100) / 100;
+  }
+  return calcularHorasTramoSimple(r);
+}
+
 function calcularDiasTrabajo(r) {
   try {
+    if (r && r.esUnificado && Array.isArray(r.jornadasUnificadas) && r.jornadasUnificadas.length > 1) {
+      const fechasUnicas = new Set(r.jornadasUnificadas.map(j => j.fechaInicio).filter(Boolean));
+      return Math.max(fechasUnicas.size, r.jornadasUnificadas.length);
+    }
     const f1 = new Date((r.fechaInicio || "2026-01-01") + "T00:00:00");
     const f2 = new Date((r.fechaTermino || r.fechaInicio || "2026-01-01") + "T00:00:00");
     const dias = Math.max(1, Math.round((f2 - f1) / 86400000) + 1);
@@ -1000,7 +1025,7 @@ function formatearMinutos(min) {
   return `${r}m`;
 }
 
-function analizarHorarioLogistica(r) {
+function analizarHorarioTramoSimple(r) {
   const declarado = (r.tipoHorario && String(r.tipoHorario).trim() === "Emergencia") ? "Emergencia" : "Normal";
   const fIni = String(r.fechaInicio || "").trim();
   const fTer = String(r.fechaTermino || fIni).trim();
@@ -1048,7 +1073,7 @@ function analizarHorarioLogistica(r) {
     const motivoDia = esFestivo ? `Festivo (${nombreDia})` : nombreDia;
     etiquetaPago = `🚨 PAGO EMERGENCIA (${motivoDia})`;
     marcador1730Texto = `🚩 ${motivoDia.toUpperCase()}${supera1730 ? ` + EXTENDIDO > 17:30 (${r.horaTermino})` : ""}`;
-    alertas.push(`Trabajo en ${motivoDia}: corresponde pago íntegro como Emergencia (${calcularHorasTrabajo(r)} hrs).`);
+    alertas.push(`Trabajo en ${motivoDia}: corresponde pago íntegro como Emergencia (${calcularHorasTramoSimple(r)} hrs).`);
   } else if (iniciaDespuesSalida) {
     categoria = "EMERGENCIA";
     tieneMarcador = true;
@@ -1091,6 +1116,27 @@ function analizarHorarioLogistica(r) {
     marcador1730Texto,
     detalle: alertas.length ? alertas.join(" | ") : `Dentro de jornada habitual (${nombreDia} 08:00–${txtSalidaHabitual}).`
   };
+}
+
+function analizarHorarioLogistica(r) {
+  if (r && r.esUnificado && Array.isArray(r.jornadasUnificadas) && r.jornadasUnificadas.length > 1) {
+    const evals = r.jornadasUnificadas.map(j => ({ j, ev: analizarHorarioTramoSimple(j) }));
+    const tieneEmerg = evals.some(x => x.ev.categoria === "EMERGENCIA");
+    const tieneExtra = evals.some(x => x.ev.categoria === "HORA_EXTRA");
+    const marcadores = evals.map(x => x.ev.marcador1730Texto).filter(Boolean);
+    const detalles = evals.map(x => `[${x.j.fechaInicio} ${x.j.trabajador}]: ${x.ev.detalle}`);
+
+    return {
+      declarado: r.tipoHorario || (tieneEmerg ? "Emergencia" : "Normal"),
+      nombreDia: `${r.jornadasUnificadas.length} jornadas unificadas`,
+      categoria: tieneEmerg ? "EMERGENCIA" : (tieneExtra ? "HORA_EXTRA" : "NORMAL"),
+      tieneMarcador: tieneEmerg || tieneExtra,
+      etiquetaPago: tieneEmerg ? "🚨 CON JORNADA(S) EMERGENCIA" : (tieneExtra ? "⏰ CON JORNADA(S) HORA EXTRA" : "✅ TODAS EN HORARIO HABITUAL"),
+      marcador1730Texto: marcadores[0] || "",
+      detalle: detalles.join(" · ")
+    };
+  }
+  return analizarHorarioTramoSimple(r);
 }
 
 async function cargar() {
@@ -1156,13 +1202,35 @@ async function cargar() {
             const infoHor = analizarHorarioLogistica(r);
             const boxClass = infoHor.categoria === "EMERGENCIA" ? "emergencia" : (infoHor.categoria === "HORA_EXTRA" ? "hora-extra" : "");
             const pillClass = infoHor.categoria === "EMERGENCIA" ? "emerg" : (infoHor.categoria === "HORA_EXTRA" ? "extra" : "normal");
+            const badgeUnificado = r.esUnificado
+              ? `<span class="badge" style="background:#e0e7ff;color:#3730a3;border:1px solid #a5b4fc">🔗 Unificado (${esc((r.foliosUnificados || []).join(" + "))})</span>`
+              : "";
+            const jornadasHtml = (r.esUnificado && Array.isArray(r.jornadasUnificadas) && r.jornadasUnificadas.length > 1)
+              ? `<div class="sublist" style="background:#eef2ff;border:1px solid #c7d2fe"><b>📅 Detalle de Jornadas / Grupos Unificados (${r.jornadasUnificadas.length}):</b><br>` +
+                r.jornadasUnificadas.map(j => {
+                  const jHor = analizarHorarioLogistica(j);
+                  return `• <b>${esc(j.idOriginal || "")}</b> (${esc(j.fechaInicio)} · ${esc(j.horaInicio)}–${esc(j.horaTermino)}) — 👷 ${esc(j.trabajador)} (${esc(j.personas)} pers.) · <i>${esc(jHor.etiquetaPago)}</i>`;
+                }).join("<br>") + `</div>`
+              : "";
+
+            const matEditRows = (r.materiales || [])
+              .map(m => `<div class="item"><input type="number" min="0" step="0.01" placeholder="Cant." value="${esc(m.cantidad)}"><input placeholder="Unidad" value="${esc(m.unidad)}"><input placeholder="Material" value="${esc(m.descripcion)}"><button type="button" onclick="this.parentElement.remove()">×</button></div>`)
+              .join("");
+            const maqEditRows = (r.maquinaria || [])
+              .map(m => `<div class="item"><input type="number" min="0" step="0.01" placeholder="Cant." value="${esc(m.cantidad)}"><input placeholder="Unidad" value="${esc(m.unidad)}"><input placeholder="Equipo / maquinaria" value="${esc(m.descripcion)}"><button type="button" onclick="this.parentElement.remove()">×</button></div>`)
+              .join("");
 
             return `<div class="report" id="rep-${idx}">
               <h3>
-                <span><span class="folio-tag">${esc(r.id)}</span>📍 ${esc(r.lugar)}</span>
+                <label style="display:inline-flex;align-items:center;gap:7px;margin:0;cursor:pointer;font-size:15px">
+                  <input type="checkbox" class="chk-unify" value="${esc(r.id)}" onchange="actualizarBarraUnificar()" style="width:17px;height:17px;cursor:pointer" title="Seleccionar para unificar con otros reportes">
+                  <span class="folio-tag">${esc(r.id)}</span>
+                  ${badgeUnificado}
+                  <span>📍 ${esc(r.lugar)}</span>
+                </label>
                 <span class="badge ${esc(estClass)}">${esc(r.estado)}</span>
               </h3>
-              <p><b>👷 Generado por:</b> ${esc(r.trabajador || "No indicado")} · <b>Cuadrilla:</b> ${esc(r.personas)} pers. · <b>Duración:</b> ${hrs} hrs${r.solicita ? ` · <b>Solicita:</b> ${esc(r.solicita)}` : ""}</p>
+              <p><b>👷 Generado por:</b> ${esc(r.trabajador || "No indicado")} · <b>Cuadrilla:</b> ${esc(r.personas)} pers. · <b>Duración total:</b> ${hrs} hrs${r.solicita ? ` · <b>Solicita:</b> ${esc(r.solicita)}` : ""}</p>
               <p><b>📅 Fecha:</b> ${esc(r.fechaInicio)} (${esc(infoHor.nombreDia)}) al ${esc(r.fechaTermino || r.fechaInicio)} · <b>🕒 Horario:</b> ${esc(r.horaInicio)}–${esc(r.horaTermino)}</p>
               <div class="log-internal-box ${boxClass}" title="Información confidencial exclusiva de Logística (no visible para trabajador ni cliente)">
                 <span style="font-weight:700;color:#475569">🔒 Control Horario (Solo Logística):</span>
@@ -1171,7 +1239,8 @@ async function cargar() {
                 <span class="log-pill normal">Declarado: ${esc(infoHor.declarado)}</span>
                 <span style="width:100%;color:#334155;font-size:12px;margin-top:2px">${esc(infoHor.detalle)}</span>
               </div>
-              <p>${esc(r.trabajo)}</p>
+              ${jornadasHtml}
+              <p style="white-space:pre-line">${esc(r.trabajo)}</p>
               ${matHtml}
               ${maqHtml}
               ${
@@ -1183,11 +1252,17 @@ async function cargar() {
                 <button type="button" class="secondary btn-sm" onclick="imprimirFicha(${idx})">📄 Ficha PDF</button>
                 <button type="button" class="success btn-sm" onclick="exportarExcelIndividual(${idx})">📊 Excel Cotización MYC</button>
                 <button type="button" class="secondary btn-sm" onclick="enviarWhatsAppManual(${idx})">💬 Enviar a WhatsApp</button>
-                <button type="button" class="secondary btn-sm" onclick="mostrarEdicion(${idx})">✏️ Editar / Estado</button>
+                <button type="button" class="secondary btn-sm" onclick="mostrarEdicion(${idx})">✏️ Editar Completo</button>
+                ${r.esUnificado ? `<button type="button" class="secondary btn-sm" style="background:#e0e7ff;color:#3730a3" onclick="separarReporteUnificado('${esc(r.id)}')">↩️ Separar Originales</button>` : ""}
                 <button type="button" class="danger btn-sm" onclick="eliminarReporte('${esc(r.id)}')">🗑️ Eliminar</button>
               </div>
               <div id="editBox-${idx}" class="edit-box hidden">
+                <div style="font-weight:700;color:#17324d;margin-bottom:8px;font-size:13.5px">✏️ Edición Completa del Reporte ${esc(r.id)}</div>
                 <div class="row">
+                  <div>
+                    <label>Lugar / Plantel</label>
+                    <input id="editLugar-${idx}" list="lugaresList" value="${esc(r.lugar || "")}">
+                  </div>
                   <div>
                     <label>Estado</label>
                     <select id="editEst-${idx}">
@@ -1195,6 +1270,32 @@ async function cargar() {
                       <option ${r.estado === "En proceso" ? "selected" : ""}>En proceso</option>
                       <option ${r.estado === "Pendiente" ? "selected" : ""}>Pendiente</option>
                     </select>
+                  </div>
+                </div>
+                <div class="row" style="margin-top:8px">
+                  <div>
+                    <label>Fecha inicio</label>
+                    <input id="editFi-${idx}" type="date" value="${esc(r.fechaInicio || "")}">
+                  </div>
+                  <div>
+                    <label>Fecha término</label>
+                    <input id="editFt-${idx}" type="date" value="${esc(r.fechaTermino || r.fechaInicio || "")}">
+                  </div>
+                </div>
+                <div class="row" style="margin-top:8px">
+                  <div>
+                    <label>Hora inicio (HH:MM)</label>
+                    <input id="editHi-${idx}" type="text" maxlength="5" placeholder="08:30" value="${esc(r.horaInicio || "")}" onblur="norm('editHi-${idx}')">
+                  </div>
+                  <div>
+                    <label>Hora término (HH:MM)</label>
+                    <input id="editHt-${idx}" type="text" maxlength="5" placeholder="17:30" value="${esc(r.horaTermino || "")}" onblur="norm('editHt-${idx}')">
+                  </div>
+                </div>
+                <div class="row" style="margin-top:8px">
+                  <div>
+                    <label>Personas en cuadrilla</label>
+                    <input id="editPers-${idx}" type="number" min="1" value="${esc(r.personas || "2")}">
                   </div>
                   <div>
                     <label>Tipo de horario (Declarado)</label>
@@ -1206,7 +1307,7 @@ async function cargar() {
                 </div>
                 <div class="row" style="margin-top:8px">
                   <div>
-                    <label>Generado por (Trabajador)</label>
+                    <label>Generado por (Trabajador / Cuadrilla)</label>
                     <input id="editTrab-${idx}" value="${esc(r.trabajador || "")}">
                   </div>
                   <div>
@@ -1216,10 +1317,20 @@ async function cargar() {
                 </div>
                 <div style="margin-top:8px">
                   <label>Trabajo realizado</label>
-                  <textarea id="editDesc-${idx}" style="min-height:70px">${esc(r.trabajo || "")}</textarea>
+                  <textarea id="editDesc-${idx}" style="min-height:80px">${esc(r.trabajo || "")}</textarea>
                 </div>
-                <div style="display:flex;gap:8px;margin-top:10px">
-                  <button type="button" class="primary btn-sm" style="width:auto" onclick="guardarEdicion('${esc(r.id)}', ${idx})">💾 Guardar cambios</button>
+                <div style="margin-top:10px">
+                  <label>Materiales utilizados</label>
+                  <div id="editMatList-${idx}">${matEditRows}</div>
+                  <button type="button" class="secondary btn-sm" onclick="add('editMatList-${idx}','Material')">+ Agregar material</button>
+                </div>
+                <div style="margin-top:10px">
+                  <label>Maquinaria / equipos utilizados</label>
+                  <div id="editMaqList-${idx}">${maqEditRows}</div>
+                  <button type="button" class="secondary btn-sm" onclick="add('editMaqList-${idx}','Equipo / maquinaria')">+ Agregar maquinaria</button>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:14px">
+                  <button type="button" class="primary btn-sm" style="width:auto" onclick="guardarEdicion('${esc(r.id)}', ${idx})">💾 Guardar todos los cambios</button>
                   <button type="button" class="secondary btn-sm" onclick="mostrarEdicion(${idx})">Cancelar</button>
                 </div>
               </div>
@@ -1238,12 +1349,29 @@ function mostrarEdicion(idx) {
 }
 
 async function guardarEdicion(id, idx) {
+  norm("editHi-" + idx);
+  norm("editHt-" + idx);
   const pin = sessionStorage.getItem("adminPinTerreno") || "";
+  const lugar = $("editLugar-" + idx) ? $("editLugar-" + idx).value.trim() : "";
   const estado = $("editEst-" + idx).value;
+  const fechaInicio = $("editFi-" + idx) ? $("editFi-" + idx).value : "";
+  const fechaTermino = $("editFt-" + idx) ? $("editFt-" + idx).value : "";
+  const horaInicio = $("editHi-" + idx) ? $("editHi-" + idx).value.trim() : "";
+  const horaTermino = $("editHt-" + idx) ? $("editHt-" + idx).value.trim() : "";
+  const personas = $("editPers-" + idx) ? $("editPers-" + idx).value : "1";
   const tipoHorario = $("editTipoHor-" + idx) ? $("editTipoHor-" + idx).value : "Normal";
   const trabajador = $("editTrab-" + idx).value.trim();
   const solicita = $("editSol-" + idx).value.trim();
   const trabajo = $("editDesc-" + idx).value.trim();
+  const materiales = items("editMatList-" + idx);
+  const maquinaria = items("editMaqList-" + idx);
+
+  const rx = /^([01]\d|2[0-3]):([0-5]\d)$/;
+  if (!rx.test(horaInicio) || !rx.test(horaTermino)) {
+    alert("Ingresa las horas en formato HH:MM (por ejemplo 08:30 y 17:30).");
+    return;
+  }
+
   try {
     const resp = await fetch(API_URL + "?action=update", {
       method: "POST",
@@ -1251,12 +1379,103 @@ async function guardarEdicion(id, idx) {
         "Content-Type": "application/json",
         "X-Admin-Pin": pin
       },
-      body: JSON.stringify({ id, estado, tipoHorario, trabajador, solicita, trabajo })
+      body: JSON.stringify({
+        id,
+        lugar,
+        estado,
+        fechaInicio,
+        fechaTermino,
+        horaInicio,
+        horaTermino,
+        personas,
+        tipoHorario,
+        trabajador,
+        solicita,
+        trabajo,
+        materiales,
+        maquinaria
+      })
     });
     if (!resp.ok) throw new Error();
     await cargar();
   } catch (e) {
     alert("No se pudo actualizar el reporte.");
+  }
+}
+
+function obtenerSeleccionUnificar() {
+  return [...document.querySelectorAll(".chk-unify:checked")].map(c => c.value);
+}
+
+function actualizarBarraUnificar() {
+  const sel = obtenerSeleccionUnificar();
+  const bar = $("unifyBar");
+  const txt = $("unifyCountText");
+  if (!bar || !txt) return;
+  if (sel.length >= 2) {
+    bar.classList.remove("hidden");
+    txt.textContent = `🔗 ${sel.length} reportes seleccionados para unificar (${sel.join(" + ")})`;
+  } else {
+    bar.classList.add("hidden");
+  }
+}
+
+function limpiarSeleccionUnificar() {
+  document.querySelectorAll(".chk-unify:checked").forEach(c => { c.checked = false; });
+  actualizarBarraUnificar();
+}
+
+async function unificarSeleccionados() {
+  const ids = obtenerSeleccionUnificar();
+  if (ids.length < 2) {
+    alert("Marca al menos 2 reportes para unificarlos.");
+    return;
+  }
+  const seleccionados = ultimosReportesCargados.filter(r => ids.includes(r.id));
+  const lugarSugerido = seleccionados[0] ? seleccionados[0].lugar : "";
+  const lugarConfirmado = prompt(
+    `Vas a unificar ${ids.length} reportes (${ids.join(" + ")}) en un solo reporte consolidado en Logística.\n\nConfirma o ajusta el nombre del Lugar / Plantel para el reporte unificado:`,
+    lugarSugerido
+  );
+  if (lugarConfirmado === null) return;
+
+  const pin = sessionStorage.getItem("adminPinTerreno") || "";
+  try {
+    const resp = await fetch(API_URL + "?action=unify", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Pin": pin
+      },
+      body: JSON.stringify({
+        ids,
+        lugar: lugarConfirmado.trim() || lugarSugerido
+      })
+    });
+    if (!resp.ok) throw new Error();
+    limpiarSeleccionUnificar();
+    await cargar();
+  } catch (e) {
+    alert("No se pudieron unificar los reportes seleccionados.");
+  }
+}
+
+async function separarReporteUnificado(id) {
+  if (!confirm(`¿Deseas separar el reporte unificado ${id} y restaurar sus reportes originales por separado en la lista?`)) return;
+  const pin = sessionStorage.getItem("adminPinTerreno") || "";
+  try {
+    const resp = await fetch(API_URL + "?action=split_unified", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Pin": pin
+      },
+      body: JSON.stringify({ id })
+    });
+    if (!resp.ok) throw new Error();
+    await cargar();
+  } catch (e) {
+    alert("No se pudo separar el reporte unificado.");
   }
 }
 

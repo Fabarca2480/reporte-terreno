@@ -634,23 +634,67 @@ if ($method === 'POST' && $action === 'update') {
 
     foreach ($reports as &$r) {
         if (($r['id'] ?? '') === $id) {
-            if (isset($input['estado']) && trim($input['estado']) !== '') {
-                $r['estado'] = trim($input['estado']);
+            if (isset($input['estado']) && trim((string)$input['estado']) !== '') {
+                $r['estado'] = trim((string)$input['estado']);
             }
-            if (isset($input['trabajador']) && trim($input['trabajador']) !== '') {
-                $r['trabajador'] = trim($input['trabajador']);
+            if (isset($input['trabajador']) && trim((string)$input['trabajador']) !== '') {
+                $r['trabajador'] = trim((string)$input['trabajador']);
             }
             if (isset($input['solicita'])) {
                 $r['solicita'] = trim((string)$input['solicita']);
             }
-            if (isset($input['lugar']) && trim($input['lugar']) !== '') {
-                $r['lugar'] = trim($input['lugar']);
+            if (isset($input['lugar']) && trim((string)$input['lugar']) !== '') {
+                $r['lugar'] = trim((string)$input['lugar']);
             }
-            if (isset($input['trabajo']) && trim($input['trabajo']) !== '') {
-                $r['trabajo'] = trim($input['trabajo']);
+            if (isset($input['fechaInicio']) && trim((string)$input['fechaInicio']) !== '') {
+                $r['fechaInicio'] = trim((string)$input['fechaInicio']);
             }
-            if (isset($input['tipoHorario']) && in_array(trim($input['tipoHorario']), ['Normal', 'Emergencia'], true)) {
-                $r['tipoHorario'] = trim($input['tipoHorario']);
+            if (isset($input['fechaTermino']) && trim((string)$input['fechaTermino']) !== '') {
+                $r['fechaTermino'] = trim((string)$input['fechaTermino']);
+            }
+            if (isset($input['horaInicio']) && trim((string)$input['horaInicio']) !== '') {
+                $r['horaInicio'] = trim((string)$input['horaInicio']);
+            }
+            if (isset($input['horaTermino']) && trim((string)$input['horaTermino']) !== '') {
+                $r['horaTermino'] = trim((string)$input['horaTermino']);
+            }
+            if (isset($input['personas']) && (int)$input['personas'] >= 1) {
+                $r['personas'] = (string)((int)$input['personas']);
+            }
+            if (isset($input['trabajo']) && trim((string)$input['trabajo']) !== '') {
+                $r['trabajo'] = trim((string)$input['trabajo']);
+            }
+            if (isset($input['tipoHorario']) && in_array(trim((string)$input['tipoHorario']), ['Normal', 'Emergencia'], true)) {
+                $r['tipoHorario'] = trim((string)$input['tipoHorario']);
+            }
+            if (isset($input['materiales']) && is_array($input['materiales'])) {
+                $cleanMat = [];
+                foreach ($input['materiales'] as $m) {
+                    $desc = trim((string)($m['descripcion'] ?? ''));
+                    if ($desc === '') continue;
+                    $cleanMat[] = [
+                        'cantidad' => trim((string)($m['cantidad'] ?? '1')),
+                        'unidad' => trim((string)($m['unidad'] ?? 'UN')),
+                        'descripcion' => $desc
+                    ];
+                }
+                $r['materiales'] = $cleanMat;
+            }
+            if (isset($input['maquinaria']) && is_array($input['maquinaria'])) {
+                $cleanMaq = [];
+                foreach ($input['maquinaria'] as $m) {
+                    $desc = trim((string)($m['descripcion'] ?? ''));
+                    if ($desc === '') continue;
+                    $cleanMaq[] = [
+                        'cantidad' => trim((string)($m['cantidad'] ?? '1')),
+                        'unidad' => trim((string)($m['unidad'] ?? 'HRS')),
+                        'descripcion' => $desc
+                    ];
+                }
+                $r['maquinaria'] = $cleanMaq;
+            }
+            if (isset($input['fotos']) && is_array($input['fotos'])) {
+                $r['fotos'] = array_values($input['fotos']);
             }
             $r['updatedAt'] = gmdate('Y-m-d\TH:i:s.v\Z');
             $updatedReport = $r;
@@ -667,6 +711,219 @@ if ($method === 'POST' && $action === 'update') {
 
     writeReports($dbFile, $reports);
     echo json_encode(['ok' => true, 'report' => $updatedReport], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if ($method === 'POST' && $action === 'unify') {
+    checkAdminPin();
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    $ids = isset($input['ids']) && is_array($input['ids']) ? array_values(array_unique(array_filter(array_map('trim', $input['ids'])))) : [];
+    if (count($ids) < 2) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Selecciona al menos 2 reportes para unificar.']);
+        exit;
+    }
+
+    $reports = readReports($dbFile);
+    [$reports, ] = ensureShortFolios($dbFile, $reports);
+
+    $toUnify = [];
+    $remaining = [];
+    foreach ($reports as $r) {
+        if (in_array($r['id'] ?? '', $ids, true)) {
+            $toUnify[] = $r;
+        } else {
+            $remaining[] = $r;
+        }
+    }
+
+    if (count($toUnify) < 2) {
+        http_response_code(404);
+        echo json_encode(['error' => 'No se encontraron los reportes seleccionados para unificar.']);
+        exit;
+    }
+
+    // Ordenar cronológicamente por fechaInicio + horaInicio
+    usort($toUnify, function ($a, $b) {
+        $ka = ($a['fechaInicio'] ?? '') . ' ' . ($a['horaInicio'] ?? '');
+        $kb = ($b['fechaInicio'] ?? '') . ' ' . ($b['horaInicio'] ?? '');
+        return strcmp($ka, $kb);
+    });
+
+    $first = $toUnify[0];
+    $last = $toUnify[count($toUnify) - 1];
+
+    $foliosOriginales = [];
+    $trabajadoresSet = [];
+    $solicitaVal = '';
+    $fechaMin = $first['fechaInicio'] ?? date('Y-m-d');
+    $fechaMax = $first['fechaTermino'] ?? $fechaMin;
+    $personasMax = 0;
+    $personasSuma = 0;
+    $tieneEmergencia = false;
+    $descripciones = [];
+    $fotosUnidas = [];
+    $jornadas = [];
+    $backupOriginales = [];
+
+    $agruparItems = function (array $listaItems): array {
+        $mapa = [];
+        foreach ($listaItems as $it) {
+            $desc = trim((string)($it['descripcion'] ?? ''));
+            if ($desc === '') continue;
+            $unid = trim((string)($it['unidad'] ?? ''));
+            $cantRaw = str_replace(',', '.', trim((string)($it['cantidad'] ?? '1')));
+            $cantNum = is_numeric($cantRaw) ? (float)$cantRaw : 1.0;
+            $key = mb_strtolower($desc . '|' . $unid, 'UTF-8');
+            if (!isset($mapa[$key])) {
+                $mapa[$key] = [
+                    'cantidad' => $cantNum,
+                    'unidad' => $unid,
+                    'descripcion' => $desc
+                ];
+            } else {
+                $mapa[$key]['cantidad'] = round($mapa[$key]['cantidad'] + $cantNum, 2);
+            }
+        }
+        return array_values(array_map(function ($x) {
+            $x['cantidad'] = (string)$x['cantidad'];
+            return $x;
+        }, $mapa));
+    };
+
+    $rawMat = [];
+    $rawMaq = [];
+
+    foreach ($toUnify as $item) {
+        // Si ya era un reporte unificado antes, conservar sus sub-reportes originales
+        if (!empty($item['reportesOriginalesBackup']) && is_array($item['reportesOriginalesBackup'])) {
+            foreach ($item['reportesOriginalesBackup'] as $b) {
+                $backupOriginales[] = $b;
+            }
+        } else {
+            $backupOriginales[] = $item;
+        }
+
+        if (!empty($item['foliosUnificados']) && is_array($item['foliosUnificados'])) {
+            foreach ($item['foliosUnificados'] as $fId) {
+                if (!in_array($fId, $foliosOriginales, true)) $foliosOriginales[] = $fId;
+            }
+        } else {
+            if (!in_array($item['id'], $foliosOriginales, true)) $foliosOriginales[] = $item['id'];
+        }
+
+        $trab = trim((string)($item['trabajador'] ?? ''));
+        if ($trab !== '' && !in_array($trab, $trabajadoresSet, true)) {
+            $trabajadoresSet[] = $trab;
+        }
+        if ($solicitaVal === '' && !empty($item['solicita'])) {
+            $solicitaVal = trim((string)$item['solicita']);
+        }
+        $fi = $item['fechaInicio'] ?? $fechaMin;
+        $ft = $item['fechaTermino'] ?? $fi;
+        if ($fi < $fechaMin) $fechaMin = $fi;
+        if ($ft > $fechaMax) $fechaMax = $ft;
+
+        $p = max(1, (int)($item['personas'] ?? 1));
+        if ($p > $personasMax) $personasMax = $p;
+        $personasSuma += $p;
+
+        if (($item['tipoHorario'] ?? '') === 'Emergencia') {
+            $tieneEmergencia = true;
+        }
+
+        $encabezadoTramo = "[{$fi} · " . ($item['horaInicio'] ?? '') . "–" . ($item['horaTermino'] ?? '') . " · " . ($trab ?: 'Cuadrilla') . " ({$p} pers.)]: ";
+        $descripciones[] = $encabezadoTramo . trim((string)($item['trabajo'] ?? ''));
+
+        foreach (($item['materiales'] ?? []) as $m) $rawMat[] = $m;
+        foreach (($item['maquinaria'] ?? []) as $m) $rawMaq[] = $m;
+        foreach (($item['fotos'] ?? []) as $f) $fotosUnidas[] = $f;
+
+        if (!empty($item['jornadasUnificadas']) && is_array($item['jornadasUnificadas'])) {
+            foreach ($item['jornadasUnificadas'] as $j) $jornadas[] = $j;
+        } else {
+            $jornadas[] = [
+                'idOriginal' => $item['id'] ?? '',
+                'fechaInicio' => $fi,
+                'fechaTermino' => $ft,
+                'horaInicio' => $item['horaInicio'] ?? '08:00',
+                'horaTermino' => $item['horaTermino'] ?? '17:30',
+                'trabajador' => $trab ?: 'No indicado',
+                'personas' => (string)$p,
+                'tipoHorario' => $item['tipoHorario'] ?? 'Normal'
+            ];
+        }
+    }
+
+    $lugarFinal = !empty($input['lugar']) ? trim((string)$input['lugar']) : ($first['lugar'] ?? '');
+    $estadoFinal = !empty($input['estado']) ? trim((string)$input['estado']) : ($last['estado'] ?? 'Terminado');
+
+    $unifiedReport = [
+        'id' => $first['id'],
+        'clientUid' => $first['clientUid'] ?? ('UNIF-' . time()),
+        'esUnificado' => true,
+        'foliosUnificados' => $foliosOriginales,
+        'jornadasUnificadas' => $jornadas,
+        'reportesOriginalesBackup' => $backupOriginales,
+        'trabajador' => implode(', ', $trabajadoresSet) ?: 'No indicado',
+        'solicita' => $solicitaVal,
+        'lugar' => $lugarFinal,
+        'fechaInicio' => $fechaMin,
+        'fechaTermino' => $fechaMax,
+        'horaInicio' => $first['horaInicio'] ?? '08:00',
+        'horaTermino' => $last['horaTermino'] ?? '17:30',
+        'personas' => (string)$personasMax,
+        'personasAcumuladas' => (string)$personasSuma,
+        'tipoHorario' => $tieneEmergencia ? 'Emergencia' : 'Normal',
+        'trabajo' => implode("\n", $descripciones),
+        'materiales' => $agruparItems($rawMat),
+        'maquinaria' => $agruparItems($rawMaq),
+        'estado' => $estadoFinal,
+        'fotos' => $fotosUnidas,
+        'createdAt' => $last['createdAt'] ?? gmdate('Y-m-d\TH:i:s.v\Z'),
+        'updatedAt' => gmdate('Y-m-d\TH:i:s.v\Z'),
+        'estadoEnvio' => 'UNIFICADO EN LOGÍSTICA'
+    ];
+
+    $remaining[] = $unifiedReport;
+    writeReports($dbFile, $remaining);
+    echo json_encode(['ok' => true, 'report' => $unifiedReport], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if ($method === 'POST' && $action === 'split_unified') {
+    checkAdminPin();
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    $id = trim((string)($input['id'] ?? ''));
+    if ($id === '') {
+        http_response_code(400);
+        echo json_encode(['error' => 'ID de reporte unificado requerido']);
+        exit;
+    }
+
+    $reports = readReports($dbFile);
+    $newList = [];
+    $restored = false;
+
+    foreach ($reports as $r) {
+        if (($r['id'] ?? '') === $id && !empty($r['reportesOriginalesBackup']) && is_array($r['reportesOriginalesBackup'])) {
+            $restored = true;
+            foreach ($r['reportesOriginalesBackup'] as $orig) {
+                $newList[] = $orig;
+            }
+        } else {
+            $newList[] = $r;
+        }
+    }
+
+    if (!$restored) {
+        http_response_code(404);
+        echo json_encode(['error' => 'No se encontró respaldo de reportes originales para separar.']);
+        exit;
+    }
+
+    writeReports($dbFile, $newList);
+    echo json_encode(['ok' => true], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
