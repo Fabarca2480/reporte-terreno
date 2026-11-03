@@ -28,16 +28,17 @@ if (!file_exists($dbFile)) {
 
 $defaultNotifyConfig = [
     'subfolderName' => 'notificacion reports',
+    'ntfyTopic' => 'myc-terreno-77547271',
     'emails' => [
         'c.huerta@mycmantencion.cl',
         'f.abarca@mycmantencion.cl',
         'j.miranda@mycmantencion.cl'
     ],
     'phones' => [
-        ['phone' => '+56968352481', 'apikey' => '', 'nombre' => 'Teléfono 1'],
-        ['phone' => '+56953945041', 'apikey' => '', 'nombre' => 'Teléfono 2'],
-        ['phone' => '+56953236814', 'apikey' => '', 'nombre' => 'Teléfono 3'],
-        ['phone' => '+56995469653', 'apikey' => '', 'nombre' => 'Teléfono 4']
+        ['phone' => '+56968352481', 'nombre' => 'Teléfono 1'],
+        ['phone' => '+56953945041', 'nombre' => 'Teléfono 2'],
+        ['phone' => '+56953236814', 'nombre' => 'Teléfono 3'],
+        ['phone' => '+56995469653', 'nombre' => 'Teléfono 4']
     ]
 ];
 
@@ -378,40 +379,41 @@ function enviarNotificacionesNuevoReporte(array $r, string $notifyConfigFile, ar
         $mailResults[$email] = $sent ? 'Enviado por servidor SMTP/mail' : 'Error al enviar correo';
     }
 
-    // Envío automático a los teléfonos por WhatsApp (si tienen API Key de CallMeBot configurada)
-    $waText = "📋 *NUEVO REPORTE DE TERRENO {$r['id']}*\n"
-        . "📍 *Lugar:* {$r['lugar']}\n"
-        . "👷 *Por:* {$r['trabajador']} ({$r['personas']} pers.)\n"
-        . "📅 *Fecha:* {$r['fechaInicio']} ({$infoHor['nombreDia']})\n"
-        . "🕒 *Horario:* {$r['horaInicio']} a {$r['horaTermino']}\n"
-        . "🔒 *Logística:* {$infoHor['etiquetaPago']}" . ($infoHor['marcador'] ? " · {$infoHor['marcador']}" : "") . "\n"
-        . "🛠️ *Trabajo:* " . mb_substr(preg_replace('/\s+/', ' ', (string)($r['trabajo'] ?? '')), 0, 180, 'UTF-8') . "\n"
-        . "🔗 https://reporte.mycmantencion.cl/#logistica";
-
-    $waResults = [];
-    foreach (($cfg['phones'] ?? []) as $phObj) {
-        $phone = preg_replace('/[^0-9+]/', '', (string)($phObj['phone'] ?? ''));
-        $apikey = trim((string)($phObj['apikey'] ?? ''));
-        if ($phone === '' || $apikey === '') {
-            $waResults[$phone ?: 'sin-numero'] = 'Pendiente de clave CallMeBot';
-            continue;
-        }
-        $cleanPhone = ltrim($phone, '+');
-        $url = 'https://api.callmebot.com/whatsapp.php?phone=' . urlencode($cleanPhone)
-            . '&text=' . urlencode($waText)
-            . '&apikey=' . urlencode($apikey);
-        $ctx = stream_context_create([
-            'http' => ['timeout' => 4, 'ignore_errors' => true],
+    // Envío automático al Canal Privado de Alertas Push MYC (ntfy.sh) para los teléfonos de supervisión
+    $ntfyTopic = trim((string)($cfg['ntfyTopic'] ?? 'myc-terreno-77547271'));
+    $pushResult = 'Canal Push desactivado';
+    if ($ntfyTopic !== '') {
+        $pushTitle = "Reporte {$r['id']} - {$r['lugar']} ({$r['trabajador']})";
+        $pushBody = "📍 Lugar: {$r['lugar']}\n"
+            . "👷 Por: {$r['trabajador']} ({$r['personas']} pers.)\n"
+            . "📅 Fecha: {$r['fechaInicio']} ({$infoHor['nombreDia']}) · {$r['horaInicio']} a {$r['horaTermino']}\n"
+            . "🔒 Logística: {$infoHor['etiquetaPago']}" . ($infoHor['marcador'] ? " · {$infoHor['marcador']}" : "") . "\n"
+            . "🛠️ Trabajo: " . mb_substr(preg_replace('/\s+/', ' ', (string)($r['trabajo'] ?? '')), 0, 220, 'UTF-8');
+        $priority = $infoHor['tieneMarcador'] ? 'high' : 'default';
+        $ctxPush = stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' => "Content-Type: text/plain; charset=utf-8\r\n"
+                    . "Title: " . preg_replace('/[^\x20-\x7E]/', '', $pushTitle) . "\r\n"
+                    . "Priority: {$priority}\r\n"
+                    . "Tags: clipboard,construction_worker\r\n"
+                    . "Click: https://reporte.mycmantencion.cl/#logistica\r\n",
+                'content' => $pushBody,
+                'timeout' => 4,
+                'ignore_errors' => true
+            ],
             'ssl' => ['verify_peer' => false, 'verify_peer_name' => false]
         ]);
-        $resp = @file_get_contents($url, false, $ctx);
-        $waResults[$phone] = ($resp !== false) ? 'WhatsApp enviado' : 'Tiempo de espera agotado';
+        $respPush = @file_get_contents('https://ntfy.sh/' . urlencode($ntfyTopic), false, $ctxPush);
+        $pushResult = ($respPush !== false)
+            ? "Enviado al Canal Push MYC (ntfy.sh/{$ntfyTopic})"
+            : "Error o tiempo agotado al conectar con ntfy.sh";
     }
 
     return [
         'mail' => $mailResults,
         'folders' => $folderStatus,
-        'whatsapp' => $waResults
+        'push' => $pushResult
     ];
 }
 
@@ -528,6 +530,9 @@ if ($method === 'POST' && $action === 'save_notify_config') {
     }
     if (isset($input['subfolderName']) && trim((string)$input['subfolderName']) !== '') {
         $cfg['subfolderName'] = trim((string)$input['subfolderName']);
+    }
+    if (isset($input['ntfyTopic']) && trim((string)$input['ntfyTopic']) !== '') {
+        $cfg['ntfyTopic'] = trim((string)$input['ntfyTopic']);
     }
     if (isset($input['phones']) && is_array($input['phones'])) {
         $cfg['phones'] = $input['phones'];

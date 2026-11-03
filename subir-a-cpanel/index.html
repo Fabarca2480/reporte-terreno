@@ -251,21 +251,31 @@ footer a:hover{opacity:1}
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
           <div>
-            <b style="font-size:14px;color:#17324d">🔔 Avisos Automáticos: Correos (Subcarpeta "notificacion reports"), WhatsApp y Sonido</b>
-            <div class="muted" style="font-size:12px">Activos para c.huerta, f.abarca, j.miranda y los 4 teléfonos de supervisión.</div>
+            <b style="font-size:14px;color:#17324d">🔔 Avisos Automáticos: Correos (Subcarpeta "notificacion reports") + Canal Push Móvil (Opción 2)</b>
+            <div class="muted" style="font-size:12px">Activos para c.huerta, f.abarca, j.miranda y alertas push en tiempo real para los 4 teléfonos.</div>
           </div>
           <button type="button" class="secondary btn-sm" onclick="toggleConfigNotificaciones()">⚙️ Ver / Configurar Avisos</button>
         </div>
         <div id="notifyConfigBox" class="edit-box hidden" style="margin-top:12px">
-          <label>📧 Correos Electrónicos (Entrega automática en subcarpeta <code>INBOX / notificacion reports</code>)</label>
+          <label>📧 1. Correos Electrónicos (Entrega automática en subcarpeta <code>INBOX / notificacion reports</code>)</label>
           <input id="cfgEmails" value="c.huerta@mycmantencion.cl, f.abarca@mycmantencion.cl, j.miranda@mycmantencion.cl">
           <div id="folderStatusMsg" class="muted" style="margin-top:4px;font-size:12px">La subcarpeta <b>notificacion reports</b> se crea automáticamente dentro de la Bandeja de Entrada de cada cuenta en cPanel.</div>
 
-          <label style="margin-top:12px">📱 Teléfonos para Aviso WhatsApp Automático</label>
-          <div class="muted" style="margin-bottom:8px;font-size:12px">
-            Para activar el envío automático desde el servidor sin costo (vía CallMeBot), cada teléfono envía una sola vez el texto <code>I allow callmebot to send me messages</code> al WhatsApp <b>+34 644 51 95 23</b> y pega aquí la clave de 6 dígitos que le responde:
-            <a href="https://api.whatsapp.com/send?phone=34644519523&text=I%20allow%20callmebot%20to%20send%20me%20messages" target="_blank" style="color:#0f766e;font-weight:700;margin-left:4px">👉 Solicitar clave en WhatsApp</a>
+          <label style="margin-top:14px">📲 2. Canal Privado de Alertas Push Móviles en Tiempo Real (Opción 2 - Sin límites ni bots llenos)</label>
+          <div class="row" style="align-items:center">
+            <div>
+              <input id="cfgNtfyTopic" value="myc-terreno-77547271" placeholder="myc-terreno-77547271">
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <a id="linkAbrirCanalPush" href="https://ntfy.sh/myc-terreno-77547271" target="_blank" style="text-decoration:none;background:#0f766e;color:#fff;padding:9px 12px;border-radius:8px;font-size:12px;font-weight:700;display:inline-block">📲 Abrir Canal Push en Vivo</a>
+            </div>
           </div>
+          <div class="muted" style="margin-top:6px;font-size:12px;line-height:1.45">
+            Cada vez que un trabajador envíe un reporte, el servidor dispara una alerta instantánea al canal privado <b><code>myc-terreno-77547271</code></b>:<br>
+            • <b>En Android / iPhone:</b> Pueden abrir directamente <a href="https://ntfy.sh/myc-terreno-77547271" target="_blank" style="color:#0f766e;font-weight:700">ntfy.sh/myc-terreno-77547271</a> en el navegador y activar <i>Notifications</i>, o instalar la app gratuita <b>ntfy</b> (Google Play / App Store) y suscribirse al tema <b><code>myc-terreno-77547271</code></b>.
+          </div>
+
+          <label style="margin-top:14px">📱 3. Teléfonos de Supervisión (Para compartir el canal o enviar fichas por WhatsApp)</label>
           <div id="cfgPhonesList"></div>
 
           <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
@@ -635,7 +645,7 @@ function dataUrlToBlob(dataUrl) {
 async function init() {
   $("hdrLogo").src = LOGO_MYC;
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js?v=11").then(reg => {
+    navigator.serviceWorker.register("sw.js?v=12").then(reg => {
       try { reg.update(); } catch (e) {}
     }).catch(() => {});
   }
@@ -1498,11 +1508,12 @@ async function eliminarReporte(id) {
   }
 }
 
-// --- SISTEMA DE AVISOS AUTOMÁTICOS (CORREOS EN SUBCARPETA + WHATSAPP + SONIDO EN VIVO) ---
+// --- SISTEMA DE AVISOS AUTOMÁTICOS (CORREOS EN SUBCARPETA + CANAL PUSH OPCIÓN 2 + SONIDO EN VIVO) ---
 let foliosConocidos = new Set();
 let primerCargaCompleta = false;
 let configNotificacionesActual = {
   subfolderName: "notificacion reports",
+  ntfyTopic: "myc-terreno-77547271",
   emails: [
     "c.huerta@mycmantencion.cl",
     "f.abarca@mycmantencion.cl",
@@ -1538,17 +1549,32 @@ function sonarCampanaNotificacion() {
   } catch (e) {}
 }
 
+function enviarLinkCanalPorWhatsApp(idx) {
+  const inp = document.querySelector(`.cfg-phone-num[data-idx="${idx}"]`);
+  const numLimpio = (inp ? inp.value : "").replace(/\D/g, "");
+  const topic = ($("cfgNtfyTopic") ? $("cfgNtfyTopic").value.trim() : "") || "myc-terreno-77547271";
+  const msg =
+    `📲 *Canal de Alertas Automáticas - Reportes de Terreno MYC*\n\n` +
+    `Para recibir notificaciones automáticas en tu teléfono cada vez que se envíe un reporte:\n` +
+    `1️⃣ Abre este enlace: https://ntfy.sh/${topic}\n` +
+    `2️⃣ O instala la app gratuita *ntfy* y suscríbete al canal: *${topic}*`;
+  const url = numLimpio
+    ? `https://api.whatsapp.com/send?phone=${numLimpio}&text=${encodeURIComponent(msg)}`
+    : `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+  window.open(url, "_blank");
+}
+
 function renderizarInputsTelefonos() {
   const cont = $("cfgPhonesList");
   if (!cont) return;
   cont.innerHTML = (configNotificacionesActual.phones || [])
     .map((p, i) => `
-      <div class="row" style="margin-bottom:6px">
+      <div class="row" style="margin-bottom:6px;align-items:center">
         <div>
           <input class="cfg-phone-num" data-idx="${i}" value="${esc(p.phone || "")}" placeholder="+569...">
         </div>
         <div>
-          <input class="cfg-phone-key" data-idx="${i}" value="${esc(p.apikey || "")}" placeholder="Clave CallMeBot WhatsApp (opcional para auto-envío)">
+          <button type="button" class="secondary btn-sm" style="width:100%" onclick="enviarLinkCanalPorWhatsApp(${i})">📲 Enviar acceso al Canal Push por WhatsApp</button>
         </div>
       </div>
     `)
@@ -1581,6 +1607,12 @@ async function cargarConfigNotificaciones() {
       if ($("cfgEmails")) {
         $("cfgEmails").value = (configNotificacionesActual.emails || []).join(", ");
       }
+      if ($("cfgNtfyTopic")) {
+        $("cfgNtfyTopic").value = configNotificacionesActual.ntfyTopic || "myc-terreno-77547271";
+      }
+      if ($("linkAbrirCanalPush")) {
+        $("linkAbrirCanalPush").href = "https://ntfy.sh/" + encodeURIComponent(configNotificacionesActual.ntfyTopic || "myc-terreno-77547271");
+      }
       renderizarInputsTelefonos();
     }
     if (data && data.folders && $("folderStatusMsg")) {
@@ -1600,11 +1632,11 @@ async function guardarConfigNotificaciones() {
     .split(",")
     .map(s => s.trim())
     .filter(Boolean);
+  const ntfyTopic = ($("cfgNtfyTopic") ? $("cfgNtfyTopic").value.trim() : "") || "myc-terreno-77547271";
   const numInputs = [...document.querySelectorAll(".cfg-phone-num")];
-  const keyInputs = [...document.querySelectorAll(".cfg-phone-key")];
   const phones = numInputs.map((inp, idx) => ({
     phone: inp.value.trim(),
-    apikey: keyInputs[idx] ? keyInputs[idx].value.trim() : "",
+    apikey: (configNotificacionesActual.phones && configNotificacionesActual.phones[idx] && configNotificacionesActual.phones[idx].apikey) || "",
     nombre: `Teléfono ${idx + 1}`
   })).filter(p => p.phone);
 
@@ -1617,17 +1649,21 @@ async function guardarConfigNotificaciones() {
       },
       body: JSON.stringify({
         subfolderName: "notificacion reports",
+        ntfyTopic,
         emails,
         phones
       })
     });
     const data = await resp.json();
     if (data && data.config) configNotificacionesActual = data.config;
+    if ($("linkAbrirCanalPush")) {
+      $("linkAbrirCanalPush").href = "https://ntfy.sh/" + encodeURIComponent(ntfyTopic);
+    }
     const stBox = $("notifyTestStatus");
     if (stBox) {
       stBox.className = "status ok";
       stBox.classList.remove("hidden");
-      stBox.innerHTML = "✓ Configuración de correos, subcarpeta <b>notificacion reports</b> y teléfonos guardada.";
+      stBox.innerHTML = "✓ Configuración de correos, subcarpeta <b>notificacion reports</b> y canal Push guardada.";
     }
   } catch (e) {
     alert("No se pudo guardar la configuración de avisos.");
@@ -1641,7 +1677,7 @@ async function probarNotificaciones() {
   if (stBox) {
     stBox.className = "status";
     stBox.classList.remove("hidden");
-    stBox.innerHTML = "⏳ Creando subcarpeta <b>notificacion reports</b> en cada correo y enviando aviso de prueba...";
+    stBox.innerHTML = "⏳ Creando subcarpeta <b>notificacion reports</b> en cada correo y enviando alerta Push de prueba...";
   }
   try {
     const resp = await fetch(API_URL + "?action=test_notify", {
@@ -1652,9 +1688,9 @@ async function probarNotificaciones() {
     sonarCampanaNotificacion();
     if (stBox && data && data.result) {
       const mailRes = Object.entries(data.result.mail || {}).map(([k, v]) => `• <b>${esc(k)}:</b> ${esc(v)}`).join("<br>");
-      const waRes = Object.entries(data.result.whatsapp || {}).map(([k, v]) => `• <b>${esc(k)}:</b> ${esc(v)}`).join("<br>");
+      const pushRes = Object.entries(data.result.push || {}).map(([k, v]) => `• <b>Canal Push (${esc(k)}):</b> ${esc(v)}`).join("<br>");
       stBox.className = "status ok";
-      stBox.innerHTML = `<strong>✓ Prueba ejecutada:</strong><br>${mailRes}<br>${waRes}`;
+      stBox.innerHTML = `<strong>✓ Prueba ejecutada:</strong><br>${mailRes}${pushRes ? "<br>" + pushRes : ""}`;
     }
   } catch (e) {
     if (stBox) {
