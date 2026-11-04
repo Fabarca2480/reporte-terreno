@@ -1102,11 +1102,13 @@ function toggleRecepcionTerreno() {
 async function init() {
   $("hdrLogo").src = LOGO_MYC;
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js?v=16").then(reg => {
+    navigator.serviceWorker.register("sw.js?v=17").then(reg => {
       try { reg.update(); } catch (e) {}
     }).catch(() => {});
   }
-  if (!isStandalone && /Android|iPhone|iPad|iPod/i.test(ua)) {
+  const params = new URLSearchParams(window.location.search);
+  const folioRec = params.get("recepcion");
+  if (!isStandalone && !folioRec && /Android|iPhone|iPad|iPod/i.test(ua)) {
     $("installBanner").classList.remove("hidden");
     if (isInAppBrowser && isAndroid) {
       $("installTitle").textContent = "📲 Instalar como Aplicación directa";
@@ -1131,8 +1133,6 @@ async function init() {
   await pend();
   sync();
 
-  const params = new URLSearchParams(window.location.search);
-  const folioRec = params.get("recepcion");
   if (folioRec) {
     abrirRecepcionClientePorFolio(folioRec);
   } else if (window.location.hash === "#logistica" || window.location.search.indexOf("logistica") !== -1) {
@@ -1815,50 +1815,51 @@ async function cargar() {
               <div class="report-actions">
                 <button type="button" class="secondary btn-sm" onclick="imprimirFicha(${idx})">📄 Ficha PDF</button>
                 <button type="button" class="success btn-sm" onclick="exportarExcelIndividual(${idx})">📊 Excel Cotización MYC</button>
+                <button type="button" class="success btn-sm" style="background:#16a34a" onclick="enviarSolicitudAprobacionWhatsApp(${idx})">📲 Solicitar Aprobación Cliente por WhatsApp</button>
                 <button type="button" class="secondary btn-sm" style="background:${recFirmada ? "#ecfdf5" : "#fef3c7"};color:${recFirmada ? "#065f46" : "#92400e"};border:1px solid ${recFirmada ? "#6ee7b7" : "#f59e0b"}" onclick="gestionarRecepcionCliente(${idx})">
-                  ${recFirmada ? "✅ Ver Recepción Cliente" : "✍️ Solicitar Aprobación Cliente"}
+                  ${recFirmada ? "✅ Ver Recepción Cliente" : "✍️ Más Opciones Aprobación"}
                 </button>
-                <button type="button" class="secondary btn-sm" onclick="enviarWhatsAppManual(${idx})">💬 Enviar a WhatsApp</button>
+                <button type="button" class="secondary btn-sm" onclick="enviarWhatsAppManual(${idx})">💬 WhatsApp Interno</button>
                 <button type="button" class="secondary btn-sm" onclick="mostrarEdicion(${idx})">✏️ Editar Completo</button>
                 ${r.esUnificado ? `<button type="button" class="secondary btn-sm" style="background:#e0e7ff;color:#3730a3" onclick="separarReporteUnificado('${esc(r.id)}')">↩️ Separar Originales</button>` : ""}
                 <button type="button" class="danger btn-sm" onclick="eliminarReporte('${esc(r.id)}')">🗑️ Eliminar</button>
               </div>
               <div id="clientApprovalBox-${idx}" class="edit-box hidden" style="border:2px solid #0f766e;background:#f0fdf4">
                 <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-                  <div style="font-weight:800;color:#0f766e;font-size:14px">✍️ Solicitar y Conseguir Aprobación del Cliente — Folio ${esc(r.id)} (${esc(r.lugar)})</div>
+                  <div style="font-weight:800;color:#0f766e;font-size:14px">📲 Enviar y Conseguir Aprobación del Cliente por WhatsApp — Folio ${esc(r.id)} (${esc(r.lugar)})</div>
                   <button type="button" class="secondary btn-sm" onclick="gestionarRecepcionCliente(${idx})">Cerrar</button>
                 </div>
                 <div class="muted" style="color:#134e4a;margin-bottom:10px;font-size:12.5px">
-                  Cuando los trabajadores no pudieron conseguir la firma en terreno, desde aquí puedes enviarle al cliente un enlace limpio (sin marcadores internos de horario) para que apruebe, firme e ingrese el <b>N° de Aviso</b> desde su celular o computador:
+                  Envía por <b>WhatsApp</b> el enlace directo para que el Jefe de Plantel / Supervisor del cliente revise el trabajo en su celular, escriba el <b>N° de Aviso</b> y firme con el dedo:
                 </div>
                 <div class="row">
                   <div>
-                    <label>👤 Nombre del Supervisor / Jefe de Plantel (Cliente)</label>
-                    <input id="reqCliNombre-${idx}" placeholder="Ej: Marcelo Yáñez" value="${esc((recObj && (recObj.destinatarioNombre || recObj.nombre)) || r.solicita || "")}">
+                    <label>📱 WhatsApp del Cliente <span class="muted">(opcional: escribe +569... o déjalo vacío para elegir contacto en WhatsApp)</span></label>
+                    <input id="reqCliPhone-${idx}" placeholder="Ej: +56912345678 (o vacío para elegir en tu WhatsApp)" value="${esc((recObj && recObj.destinatarioTelefono) || "")}">
                   </div>
                   <div>
-                    <label>📧 Correo Electrónico del Cliente <span class="muted">(para envío directo)</span></label>
-                    <input id="reqCliEmail-${idx}" type="email" placeholder="Ej: supervisor@agrosuper.com" value="${esc((recObj && recObj.destinatarioEmail) || "")}">
+                    <label>👤 Nombre del Supervisor / Jefe de Plantel <span class="muted">(opcional)</span></label>
+                    <input id="reqCliNombre-${idx}" placeholder="Ej: Marcelo Yáñez" value="${esc((recObj && (recObj.destinatarioNombre || recObj.nombre)) || r.solicita || "")}">
                   </div>
                 </div>
                 <div class="row" style="margin-top:8px">
                   <div>
-                    <label>📱 WhatsApp del Cliente <span class="muted">(opcional, ej: +569...)</span></label>
-                    <input id="reqCliPhone-${idx}" placeholder="Ej: +56912345678 (o déjalo vacío para elegir contacto)" value="${esc((recObj && recObj.destinatarioTelefono) || "")}">
+                    <label>📝 Nota adicional para el mensaje de WhatsApp <span class="muted">(opcional)</span></label>
+                    <input id="reqCliNota-${idx}" placeholder="Ej: Favor aprobar trabajo y agregar N° de aviso" value="${esc((recObj && recObj.notaSolicitud) || "")}">
                   </div>
                   <div>
-                    <label>📝 Nota adicional en el mensaje <span class="muted">(opcional)</span></label>
-                    <input id="reqCliNota-${idx}" placeholder="Ej: Adjuntamos reporte para su recepción y N° de aviso" value="${esc((recObj && recObj.notaSolicitud) || "")}">
+                    <label>📧 Correo del Cliente <span class="muted">(solo si también deseas enviarlo por email)</span></label>
+                    <input id="reqCliEmail-${idx}" type="email" placeholder="Ej: supervisor@agrosuper.com" value="${esc((recObj && recObj.destinatarioEmail) || "")}">
                   </div>
                 </div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-                  <button type="button" class="primary btn-sm" style="width:auto;background:#0f766e" onclick="enviarSolicitudAprobacionCorreo(${idx})">📧 1. Enviar Solicitud por Correo al Cliente</button>
-                  <button type="button" class="success btn-sm" style="width:auto" onclick="enviarSolicitudAprobacionWhatsApp(${idx})">💬 2. Enviar Link de Aprobación por WhatsApp</button>
-                  <button type="button" class="secondary btn-sm" style="width:auto" onclick="copiarLinkAprobacionCliente(${idx})">📋 3. Copiar Link (${esc(r.id)})</button>
-                  <button type="button" class="secondary btn-sm" style="width:auto;background:#fff;border:1px solid #0f766e;color:#0f766e" onclick="renderizarDatosEnVistaCliente(ultimosReportesCargados[${idx}], false)">✍️ 4. Abrir Pantalla de Firma Ahora</button>
+                  <button type="button" class="success btn-sm" style="width:auto;font-size:13.5px;padding:10px 16px" onclick="enviarSolicitudAprobacionWhatsApp(${idx})">📲 1. Enviar Link de Aprobación por WhatsApp</button>
+                  <button type="button" class="secondary btn-sm" style="width:auto" onclick="copiarLinkAprobacionCliente(${idx})">📋 2. Copiar Link para pegar en WhatsApp (${esc(r.id)})</button>
+                  <button type="button" class="primary btn-sm" style="width:auto;background:#0f766e" onclick="enviarSolicitudAprobacionCorreo(${idx})">📧 3. Enviar también por Correo</button>
+                  <button type="button" class="secondary btn-sm" style="width:auto;background:#fff;border:1px solid #0f766e;color:#0f766e" onclick="renderizarDatosEnVistaCliente(ultimosReportesCargados[${idx}], false)">✍️ 4. Ver Pantalla que abre el Cliente</button>
                 </div>
                 <div style="margin-top:8px;font-size:12px;color:#065f46">
-                  🔗 <b>Link directo para el cliente:</b> <a href="${esc(linkDirectoCliente)}" target="_blank" style="color:#0f766e;font-weight:700">${esc(linkDirectoCliente)}</a>
+                  🔗 <b>Link directo de WhatsApp para el cliente:</b> <a href="${esc(linkDirectoCliente)}" target="_blank" style="color:#0f766e;font-weight:700">${esc(linkDirectoCliente)}</a>
                 </div>
                 <div id="reqCliStatus-${idx}" class="status hidden" style="margin-top:8px"></div>
               </div>
@@ -2391,11 +2392,16 @@ function renderizarDatosEnVistaCliente(r, mostrarGuiaMuestra = false) {
   folioClienteActual = r.id || "RT-MUESTRA";
   esMuestraCliente = mostrarGuiaMuestra;
 
+  if ($("installBanner")) $("installBanner").classList.add("hidden");
   $("trabajador").classList.add("hidden");
   $("logistica").classList.add("hidden");
   $("vistaCliente").classList.remove("hidden");
   if ($("bannerMuestraCliente")) {
     $("bannerMuestraCliente").classList.toggle("hidden", !mostrarGuiaMuestra);
+  }
+  if ($("btnCerrarVistaCliente")) {
+    const esExternoPorLink = window.location.search.indexOf("recepcion=") !== -1 && !sessionStorage.getItem("adminPinTerreno") && !mostrarGuiaMuestra;
+    $("btnCerrarVistaCliente").classList.toggle("hidden", esExternoPorLink);
   }
 
   $("cliFolio").textContent = r.id || "RT-MUESTRA";
@@ -2537,10 +2543,24 @@ async function guardarFirmaClienteRemota() {
       })
     });
     if (!resp.ok) throw new Error();
+    const lugarTxt = $("cliLugar") ? $("cliLugar").textContent : "";
+    const msgRetornoWa =
+      `✅ *RECEPCIÓN DE TRABAJO CONFIRMADA*\n` +
+      `• *Folio:* ${folioClienteActual}\n` +
+      `• *Lugar:* ${lugarTxt}\n` +
+      `• *Estado:* ${estado}\n` +
+      `• *Aprobado por:* ${nombre}${cargo ? ` (${cargo})` : ""}\n` +
+      (numeroAviso ? `• *N° de Aviso Cliente:* ${numeroAviso}\n` : "") +
+      (observacion ? `• *Observación:* ${observacion}\n` : "");
+    const urlRetornoWa = `https://api.whatsapp.com/send?text=${encodeURIComponent(msgRetornoWa)}`;
+
     const st = $("cliRecStatus");
     st.className = "status ok";
     st.classList.remove("hidden");
-    st.innerHTML = `<strong>✓ Recepción registrada exitosamente.</strong> Muchas gracias, <b>${esc(nombre)}</b>. Se ha enviado respaldo a Inversiones y Mantenimiento MYC SpA.`;
+    st.innerHTML =
+      `<strong>✓ ¡Recepción y Firma registradas exitosamente!</strong><br>` +
+      `Muchas gracias, <b>${esc(nombre)}</b>. La aprobación ya quedó guardada en el sistema de <b>Inversiones y Mantenimiento MYC SpA</b>.<br>` +
+      `<div style="margin-top:10px"><a href="${esc(urlRetornoWa)}" target="_blank" style="display:inline-block;background:#16a34a;color:#fff;text-decoration:none;padding:9px 16px;border-radius:8px;font-weight:700;font-size:13.5px">📲 Enviar comprobante de aprobación por WhatsApp</a></div>`;
   } catch (e) {
     alert("No se pudo guardar la recepción en este momento. Intente nuevamente.");
   } finally {
