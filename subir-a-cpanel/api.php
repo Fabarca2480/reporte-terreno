@@ -15,6 +15,7 @@ $dataDir = $baseDir . DIRECTORY_SEPARATOR . 'data';
 $uploadsDir = $baseDir . DIRECTORY_SEPARATOR . 'uploads';
 $dbFile = $dataDir . DIRECTORY_SEPARATOR . 'reportes.json';
 $notifyConfigFile = $dataDir . DIRECTORY_SEPARATOR . 'notificaciones.json';
+$workersFile = $dataDir . DIRECTORY_SEPARATOR . 'trabajadores.json';
 
 if (!is_dir($dataDir)) {
     mkdir($dataDir, 0755, true);
@@ -24,6 +25,89 @@ if (!is_dir($uploadsDir)) {
 }
 if (!file_exists($dbFile)) {
     file_put_contents($dbFile, "[]", LOCK_EX);
+}
+
+$defaultWorkersCatalog = [
+    'ABELDAÑO MARTINEZ JAIRO JAVIER',
+    'ALIAGA PARDO KEVIN WILLIAMS',
+    'ALVAREZ MUÑOZ ALFONSO',
+    'ARAUJO CASTILLO WILLIAMS JOSE',
+    'AREVALO VASQUEZ RODOLFO ALEJANDRO',
+    'BECERRA FLORES MATIAS ANDRES',
+    'BETANCOURT OCORO JULIAN ADOLFO',
+    'BUZO BECERRA GUSTAVO ERNESTO',
+    'CASTILLO VASQUEZ JUAN CAMILO',
+    'CENTENO JUAN CARLOS',
+    'CERDA OLMEDO MARCELO ALEXANDER',
+    'CONTRERAS CORREA SANDRO ADAN',
+    'CORREA VENEGAS LUIS HERNAN',
+    'DONOSO LABRA RAUL ANTONIO',
+    'ESPINOZA DIAZ NELSON ALEJANDRO',
+    'FARIAS FUENTES MAURICIO ENRIQUE',
+    'FERNANDEZ FERNANDEZ JOSE MIGUEL',
+    'FLORES REYES GUILLERMO ENRIQUE',
+    'FLORES REYES MARIO JAVIER',
+    'FLORES ROJAS JESUS ALEJANDRO',
+    'GARCIA-HUIDOBRO FUENTES ORLANDO ANDRES',
+    'GARCIA-HUIDOBRO FUENTES PABLO ANDRÉS',
+    'GONZALEZ CONTRERAS HECTOR',
+    'HERRERA FLORES LUIS ALIRO',
+    'HUERTA CONTRERAS GONZALO FRANCISCO',
+    'IBARRA ALARCON JULIO ENRIQUE',
+    'LOYOLA CORNEJO CLAUDIO OSVALDO',
+    'MANZO ALARCON DIEGO ALEJANDRO',
+    'MARTINEZ JORQUERA MARCELO ANTONIO',
+    'MUÑOZ CEDNA LUIS ANDRES',
+    'MUÑOZ CONTRERAS NOLBERTO ANTONIO',
+    'MUÑOZ MOYA HECTOR DEL CARMEN',
+    'NUÑEZ TORO ISAIAS JESUS',
+    'PINEDA RUIZ ANDRES FELIPE',
+    'PINTO ARRIAZA JUAN DEL CARMEN',
+    'QUINTANILLA CONTREAS CAMILO JOSE',
+    'RIOS PEREZ FABIAN ALFREDO',
+    'SILVA ARANEDA SEBASTIÁN ANDRÉS',
+    'TOBAR GONZALEZ EDUARDO ALEXIS',
+    'TOBAR GONZALEZ JULIAN ANSELMO',
+    'VIERA CERDA MIGUEL ANDRES',
+    'VILLAVICENCIO DEVIA SERGIO DEL CARMEN'
+];
+
+if (!file_exists($workersFile)) {
+    file_put_contents($workersFile, json_encode($defaultWorkersCatalog, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), LOCK_EX);
+}
+
+function getWorkersCatalog(string $workersFile, array $defaultWorkersCatalog): array {
+    if (!file_exists($workersFile)) {
+        return $defaultWorkersCatalog;
+    }
+    $decoded = json_decode((string)file_get_contents($workersFile), true);
+    if (!is_array($decoded) || empty($decoded)) {
+        return $defaultWorkersCatalog;
+    }
+    return array_values(array_unique(array_filter(array_map('trim', $decoded))));
+}
+
+function registerNewWorkers(string $workersFile, array $defaultWorkersCatalog, array $names): array {
+    $current = getWorkersCatalog($workersFile, $defaultWorkersCatalog);
+    $lowerMap = [];
+    foreach ($current as $w) {
+        $lowerMap[mb_strtolower($w, 'UTF-8')] = $w;
+    }
+    $changed = false;
+    foreach ($names as $n) {
+        $clean = trim((string)$n);
+        if ($clean === '' || mb_strtolower($clean, 'UTF-8') === 'no indicado') continue;
+        $key = mb_strtolower($clean, 'UTF-8');
+        if (!isset($lowerMap[$key])) {
+            $current[] = $clean;
+            $lowerMap[$key] = $clean;
+            $changed = true;
+        }
+    }
+    if ($changed) {
+        @file_put_contents($workersFile, json_encode(array_values($current), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), LOCK_EX);
+    }
+    return $current;
 }
 
 $defaultNotifyConfig = [
@@ -268,6 +352,21 @@ function enviarNotificacionesNuevoReporte(array $r, string $notifyConfigFile, ar
     $folio = htmlspecialchars((string)($r['id'] ?? ''), ENT_QUOTES, 'UTF-8');
     $lugar = htmlspecialchars((string)($r['lugar'] ?? ''), ENT_QUOTES, 'UTF-8');
     $trabajador = htmlspecialchars((string)($r['trabajador'] ?? 'No indicado'), ENT_QUOTES, 'UTF-8');
+    $integrantesArr = isset($r['integrantes']) && is_array($r['integrantes']) ? array_values(array_filter(array_map('trim', $r['integrantes']))) : [];
+    $integrantesHtml = $integrantesArr
+        ? '<br><span style="color:#475569;font-size:12.5px">👥 <strong>Integrantes cuadrilla:</strong> ' . htmlspecialchars(implode(', ', $integrantesArr), ENT_QUOTES, 'UTF-8') . '</span>'
+        : '';
+    $recCli = isset($r['recepcionCliente']) && is_array($r['recepcionCliente']) ? $r['recepcionCliente'] : null;
+    $recCliHtml = '';
+    if ($recCli && (!empty($recCli['firmado']) || !empty($recCli['nombre']))) {
+        $estRec = htmlspecialchars((string)($recCli['estado'] ?? 'Recibido Conforme'), ENT_QUOTES, 'UTF-8');
+        $nomRec = htmlspecialchars((string)($recCli['nombre'] ?? ''), ENT_QUOTES, 'UTF-8');
+        $carRec = htmlspecialchars((string)($recCli['cargo'] ?? ''), ENT_QUOTES, 'UTF-8');
+        $obsRec = htmlspecialchars((string)($recCli['observacion'] ?? ''), ENT_QUOTES, 'UTF-8');
+        $recCliHtml = "<div style='background:#ecfdf5;border:1px solid #6ee7b7;color:#065f46;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:13px'>
+          <strong>✍️ Recepción del Cliente ({$estRec}):</strong> {$nomRec}" . ($carRec ? " ({$carRec})" : "") . ($obsRec ? "<br><em>\"{$obsRec}\"</em>" : "") . "
+        </div>";
+    }
     $fechaIni = htmlspecialchars((string)($r['fechaInicio'] ?? ''), ENT_QUOTES, 'UTF-8');
     $fechaTer = htmlspecialchars((string)($r['fechaTermino'] ?? $fechaIni), ENT_QUOTES, 'UTF-8');
     $horario = htmlspecialchars(($r['horaInicio'] ?? '') . ' a ' . ($r['horaTermino'] ?? ''), ENT_QUOTES, 'UTF-8');
@@ -311,9 +410,10 @@ function enviarNotificacionesNuevoReporte(array $r, string $notifyConfigFile, ar
           <strong>Declarado por trabajador:</strong> " . htmlspecialchars($infoHor['declarado'], ENT_QUOTES, 'UTF-8') . "<br>
           <span>" . htmlspecialchars($infoHor['detalle'], ENT_QUOTES, 'UTF-8') . "</span>
         </div>
+        {$recCliHtml}
         <table style='width:100%;border-collapse:collapse;font-size:13.5px;margin-bottom:14px'>
           <tr><td style='padding:7px 10px;border:1px solid #e2e8f0;background:#f8fafc;width:32%'><strong>Lugar / Plantel</strong></td><td style='padding:7px 10px;border:1px solid #e2e8f0'><strong>{$lugar}</strong></td></tr>
-          <tr><td style='padding:7px 10px;border:1px solid #e2e8f0;background:#f8fafc'><strong>Generado por</strong></td><td style='padding:7px 10px;border:1px solid #e2e8f0'>👷 {$trabajador} ({$personas} pers. en cuadrilla)</td></tr>
+          <tr><td style='padding:7px 10px;border:1px solid #e2e8f0;background:#f8fafc'><strong>Generado por / Cuadrilla</strong></td><td style='padding:7px 10px;border:1px solid #e2e8f0'>👷 {$trabajador} ({$personas} pers. en cuadrilla){$integrantesHtml}</td></tr>
           <tr><td style='padding:7px 10px;border:1px solid #e2e8f0;background:#f8fafc'><strong>Fecha y Día</strong></td><td style='padding:7px 10px;border:1px solid #e2e8f0'>{$fechaIni} (" . htmlspecialchars($infoHor['nombreDia'], ENT_QUOTES, 'UTF-8') . ") al {$fechaTer}</td></tr>
           <tr><td style='padding:7px 10px;border:1px solid #e2e8f0;background:#f8fafc'><strong>Horario</strong></td><td style='padding:7px 10px;border:1px solid #e2e8f0'>{$horario}</td></tr>
           <tr><td style='padding:7px 10px;border:1px solid #e2e8f0;background:#f8fafc'><strong>Estado</strong></td><td style='padding:7px 10px;border:1px solid #e2e8f0'>{$estado} ({$cantFotos} foto(s) adjuntas)</td></tr>
@@ -509,7 +609,115 @@ $action = $_GET['action'] ?? '';
 if ($method === 'GET' && $action === 'health') {
     $cfg = getNotifyConfig($notifyConfigFile, $defaultNotifyConfig);
     $folders = ensureMailSubfolders($cfg['emails'] ?? [], $cfg['subfolderName'] ?? 'notificacion reports');
-    echo json_encode(['ok' => true, 'server' => 'php-cpanel-v10', 'timestamp' => gmdate('c'), 'folders' => $folders], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['ok' => true, 'server' => 'php-cpanel-v11', 'timestamp' => gmdate('c'), 'folders' => $folders], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if ($method === 'GET' && $action === 'workers_catalog') {
+    $workers = getWorkersCatalog($workersFile, $defaultWorkersCatalog);
+    echo json_encode(['ok' => true, 'workers' => $workers], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if ($method === 'POST' && $action === 'save_workers_catalog') {
+    checkAdminPin();
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    if (isset($input['workers']) && is_array($input['workers'])) {
+        $clean = array_values(array_unique(array_filter(array_map('trim', $input['workers']))));
+        file_put_contents($workersFile, json_encode($clean, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), LOCK_EX);
+        echo json_encode(['ok' => true, 'workers' => $clean], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+    http_response_code(400);
+    echo json_encode(['error' => 'Lista de trabajadores inválida']);
+    exit;
+}
+
+if ($method === 'GET' && $action === 'client_view') {
+    $id = trim((string)($_GET['id'] ?? ''));
+    if ($id === '') {
+        http_response_code(400);
+        echo json_encode(['error' => 'Folio requerido']);
+        exit;
+    }
+    $reports = readReports($dbFile);
+    [$reports, ] = ensureShortFolios($dbFile, $reports);
+    foreach ($reports as $r) {
+        if (($r['id'] ?? '') === $id) {
+            // Devolver ÚNICAMENTE datos aptos para el cliente (jamás exponer marcadores internos de horario/horas extra)
+            $safeReport = [
+                'id' => $r['id'] ?? '',
+                'lugar' => $r['lugar'] ?? '',
+                'solicita' => $r['solicita'] ?? '',
+                'trabajador' => $r['trabajador'] ?? '',
+                'integrantes' => $r['integrantes'] ?? [],
+                'personas' => $r['personas'] ?? '1',
+                'fechaInicio' => $r['fechaInicio'] ?? '',
+                'fechaTermino' => $r['fechaTermino'] ?? ($r['fechaInicio'] ?? ''),
+                'horaInicio' => $r['horaInicio'] ?? '',
+                'horaTermino' => $r['horaTermino'] ?? '',
+                'trabajo' => $r['trabajo'] ?? '',
+                'materiales' => $r['materiales'] ?? [],
+                'maquinaria' => $r['maquinaria'] ?? [],
+                'estado' => $r['estado'] ?? 'Terminado',
+                'fotos' => $r['fotos'] ?? [],
+                'recepcionCliente' => $r['recepcionCliente'] ?? null
+            ];
+            echo json_encode(['ok' => true, 'report' => $safeReport], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+    }
+    http_response_code(404);
+    echo json_encode(['error' => 'Reporte no encontrado']);
+    exit;
+}
+
+if ($method === 'POST' && $action === 'client_sign') {
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    $id = trim((string)($input['id'] ?? ''));
+    $nombre = trim((string)($input['nombre'] ?? ''));
+    if ($id === '' || $nombre === '') {
+        http_response_code(400);
+        echo json_encode(['error' => 'Folio y nombre de quien recibe son obligatorios']);
+        exit;
+    }
+    $reports = readReports($dbFile);
+    [$reports, ] = ensureShortFolios($dbFile, $reports);
+    $foundReport = null;
+    foreach ($reports as &$r) {
+        if (($r['id'] ?? '') === $id) {
+            $r['recepcionCliente'] = [
+                'requerido' => true,
+                'firmado' => true,
+                'estado' => in_array(trim((string)($input['estado'] ?? '')), ['Recibido Conforme', 'Recibido con Observaciones'], true)
+                    ? trim((string)$input['estado'])
+                    : 'Recibido Conforme',
+                'nombre' => $nombre,
+                'cargo' => trim((string)($input['cargo'] ?? '')),
+                'observacion' => trim((string)($input['observacion'] ?? '')),
+                'firmaDataUrl' => trim((string)($input['firmaDataUrl'] ?? '')),
+                'modalidad' => trim((string)($input['modalidad'] ?? 'Link Cliente')),
+                'fechaFirma' => gmdate('Y-m-d\TH:i:s.v\Z')
+            ];
+            if (empty($r['solicita'])) {
+                $r['solicita'] = $nombre;
+            }
+            $r['updatedAt'] = gmdate('Y-m-d\TH:i:s.v\Z');
+            $foundReport = $r;
+            break;
+        }
+    }
+    unset($r);
+    if (!$foundReport) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Reporte no encontrado']);
+        exit;
+    }
+    writeReports($dbFile, $reports);
+    try {
+        enviarNotificacionesNuevoReporte($foundReport, $notifyConfigFile, $defaultNotifyConfig);
+    } catch (\Throwable $e) {}
+    echo json_encode(['ok' => true, 'recepcionCliente' => $foundReport['recepcionCliente']], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
@@ -645,6 +853,12 @@ if ($method === 'POST' && $action === 'update') {
             if (isset($input['trabajador']) && trim((string)$input['trabajador']) !== '') {
                 $r['trabajador'] = trim((string)$input['trabajador']);
             }
+            if (isset($input['integrantes']) && is_array($input['integrantes'])) {
+                $r['integrantes'] = array_values(array_unique(array_filter(array_map('trim', $input['integrantes']))));
+            }
+            if (isset($input['recepcionCliente']) && is_array($input['recepcionCliente'])) {
+                $r['recepcionCliente'] = $input['recepcionCliente'];
+            }
             if (isset($input['solicita'])) {
                 $r['solicita'] = trim((string)$input['solicita']);
             }
@@ -760,6 +974,8 @@ if ($method === 'POST' && $action === 'unify') {
 
     $foliosOriginales = [];
     $trabajadoresSet = [];
+    $integrantesSet = [];
+    $recepcionConsolidada = null;
     $solicitaVal = '';
     $fechaMin = $first['fechaInicio'] ?? date('Y-m-d');
     $fechaMax = $first['fechaTermino'] ?? $fechaMin;
@@ -821,6 +1037,17 @@ if ($method === 'POST' && $action === 'unify') {
         if ($trab !== '' && !in_array($trab, $trabajadoresSet, true)) {
             $trabajadoresSet[] = $trab;
         }
+        if (!empty($item['integrantes']) && is_array($item['integrantes'])) {
+            foreach ($item['integrantes'] as $integ) {
+                $integClean = trim((string)$integ);
+                if ($integClean !== '' && !in_array($integClean, $integrantesSet, true)) {
+                    $integrantesSet[] = $integClean;
+                }
+            }
+        }
+        if (!$recepcionConsolidada && !empty($item['recepcionCliente']) && is_array($item['recepcionCliente'])) {
+            $recepcionConsolidada = $item['recepcionCliente'];
+        }
         if ($solicitaVal === '' && !empty($item['solicita'])) {
             $solicitaVal = trim((string)$item['solicita']);
         }
@@ -871,6 +1098,8 @@ if ($method === 'POST' && $action === 'unify') {
         'jornadasUnificadas' => $jornadas,
         'reportesOriginalesBackup' => $backupOriginales,
         'trabajador' => implode(', ', $trabajadoresSet) ?: 'No indicado',
+        'integrantes' => $integrantesSet,
+        'recepcionCliente' => $recepcionConsolidada,
         'solicita' => $solicitaVal,
         'lugar' => $lugarFinal,
         'fechaInicio' => $fechaMin,
@@ -1003,11 +1232,13 @@ if ($method === 'GET') {
 
     if ($q !== '') {
         $reports = array_filter($reports, function ($r) use ($q) {
+            $integrantesStr = isset($r['integrantes']) && is_array($r['integrantes']) ? implode(' ', $r['integrantes']) : '';
             $haystack = mb_strtolower(
                 ($r['id'] ?? '') . ' ' .
                 ($r['lugar'] ?? '') . ' ' .
                 ($r['trabajo'] ?? '') . ' ' .
                 ($r['trabajador'] ?? '') . ' ' .
+                $integrantesStr . ' ' .
                 ($r['solicita'] ?? ''),
                 'UTF-8'
             );
@@ -1093,6 +1324,18 @@ if ($method === 'POST') {
     $r['id'] = sprintf('RT-%04d', $nextNum);
     $r['clientUid'] = $clientUid ?: ('UID-' . round(microtime(true) * 1000));
     $r['trabajador'] = trim((string)$r['trabajador']);
+    $r['integrantes'] = isset($r['integrantes']) && is_array($r['integrantes'])
+        ? array_values(array_unique(array_filter(array_map('trim', $r['integrantes']))))
+        : [];
+    // Registrar automáticamente nuevos nombres (opción "Otro") en el catálogo de trabajadores
+    registerNewWorkers($workersFile, $defaultWorkersCatalog, array_merge([$r['trabajador']], $r['integrantes']));
+    if (isset($r['recepcionCliente']) && is_array($r['recepcionCliente'])) {
+        if (empty($r['solicita']) && !empty($r['recepcionCliente']['nombre'])) {
+            $r['solicita'] = trim((string)$r['recepcionCliente']['nombre']);
+        }
+    } else {
+        $r['recepcionCliente'] = null;
+    }
     $r['tipoHorario'] = (isset($r['tipoHorario']) && trim((string)$r['tipoHorario']) === 'Emergencia') ? 'Emergencia' : 'Normal';
     $r['createdAt'] = gmdate('Y-m-d\TH:i:s.v\Z');
     $r['estadoEnvio'] = 'RECIBIDO';

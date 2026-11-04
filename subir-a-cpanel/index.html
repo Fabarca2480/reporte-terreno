@@ -76,6 +76,12 @@ button:disabled{opacity:.6;cursor:not-allowed}
 .report-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .edit-box{background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:12px;margin-top:10px}
 .admin-bar{display:flex;justify-content:space-between;align-items:center;background:#1e293b;color:#fff;padding:10px 14px;border-radius:12px;margin-bottom:12px}
+.crew-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.crew-chip{display:inline-flex;align-items:center;gap:6px;background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;padding:5px 10px;border-radius:99px;font-size:13px;font-weight:600}
+.crew-chip button{background:transparent;color:#0369a1;padding:0 2px;font-size:15px;line-height:1;border-radius:4px}
+.sig-wrap{border:2px dashed #94a3b8;border-radius:10px;background:#fff;padding:6px;text-align:center}
+.sig-canvas{width:100%;height:155px;touch-action:none;cursor:crosshair;display:block;background:#fff;border-radius:6px}
+.client-rec-badge{display:inline-flex;align-items:center;gap:5px;background:#dcfce7;color:#166534;border:1px solid #86efac;padding:4px 10px;border-radius:99px;font-size:12px;font-weight:700}
 footer{text-align:center;color:#94a3b8;font-size:12px;padding:18px 10px 28px}
 footer a{color:#94a3b8;text-decoration:none;opacity:.6;padding:4px 8px}
 footer a:hover{opacity:1}
@@ -122,10 +128,38 @@ footer a:hover{opacity:1}
       <div id="workerInputBox">
         <label>👷 ¿Quién genera el reporte? <span style="color:#dc2626">*</span></label>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <input id="trabajadorNombre" placeholder="Escribe tu Nombre y Apellido (ej: Juan Pérez)" style="flex:1;min-width:210px">
+          <input id="trabajadorNombre" list="trabajadoresList" placeholder="Busca o escribe tu Nombre y Apellido (ej: CERDA)" style="flex:1;min-width:210px">
           <button type="button" class="secondary" onclick="fijarTrabajador()">Guardar en mi teléfono</button>
         </div>
-        <div class="muted" style="margin-top:5px">Lo escribes solo la 1ª vez y quedará fijo automáticamente en este teléfono.</div>
+        <datalist id="trabajadoresList"></datalist>
+        <div class="muted" style="margin-top:5px">Lo seleccionas o escribes solo la 1ª vez y quedará fijo automáticamente en este teléfono.</div>
+      </div>
+
+      <hr style="border:0;border-top:1px solid #e2e8f0;margin:14px 0">
+
+      <div>
+        <label>👥 Integrantes adicionales de la cuadrilla <span class="muted">(opcional)</span></label>
+        <div class="row" style="gap:8px">
+          <div>
+            <select id="integranteSelect" onchange="seleccionarIntegranteDeLista(this.value)">
+              <option value="">— Seleccionar de la lista (42 trabajadores) —</option>
+            </select>
+          </div>
+          <div>
+            <input id="integranteInput" list="trabajadoresList" placeholder="O busca escribiendo apellido/nombre...">
+          </div>
+        </div>
+        <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <label style="font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer;margin:0">
+            <input id="otroIntegrante" type="checkbox" style="width:auto" onchange="toggleOtroIntegrante()"> Otro integrante (no está en la lista)
+          </label>
+          <button type="button" class="secondary btn-sm" onclick="agregarIntegranteCuadrilla()">+ Agregar integrante a la cuadrilla</button>
+        </div>
+        <div id="otroIntegranteBox" class="hidden" style="margin-top:8px">
+          <input id="otroIntegranteTxt" placeholder="Escribe Nombre y Apellido del otro integrante">
+        </div>
+        <div id="crewChips" class="crew-chips"></div>
+        <div id="crewSummary" class="muted" style="margin-top:6px;font-size:12px">Sin acompañantes adicionales agregados (1 persona: quien genera el reporte).</div>
       </div>
     </div>
 
@@ -156,7 +190,7 @@ footer a:hover{opacity:1}
       <div class="row" style="margin-top:12px">
         <div>
           <label>Personas en cuadrilla</label>
-          <input id="personas" type="number" min="1" value="2">
+          <input id="personas" type="number" min="1" value="1">
         </div>
         <div>
           <label>Tipo de horario</label>
@@ -201,6 +235,55 @@ footer a:hover{opacity:1}
       </select>
     </div>
 
+    <div class="card" style="border:1px solid #cbd5e1;background:#f8fafc">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <label style="margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:8px;color:#17324d">
+          <input id="reqRecepcionCliente" type="checkbox" style="width:18px;height:18px" onchange="toggleRecepcionTerreno()">
+          <span>✍️ Recepción Conforme del Cliente en Terreno <span class="muted" style="font-weight:400">(Activar cuando se requiera)</span></span>
+        </label>
+        <button type="button" class="secondary btn-sm" onclick="abrirMuestraRecepcionCliente()">👁️ Ver Muestra Vista Cliente</button>
+      </div>
+      <div class="muted" style="margin-top:5px;font-size:12px">
+        Úsalo cuando el Jefe de Plantel / ITO / Supervisor del cliente reciba el trabajo en terreno, o déjalo sin marcar para solicitarle la firma después por enlace desde Logística.
+      </div>
+
+      <div id="boxRecepcionTerreno" class="hidden" style="margin-top:12px;background:#fff;border:1px solid #cbd5e1;border-radius:10px;padding:12px">
+        <div class="row">
+          <div>
+            <label>Nombre de quien recibe (Cliente) <span style="color:#dc2626">*</span></label>
+            <input id="recNombre" placeholder="Ej: Marcelo Yáñez">
+          </div>
+          <div>
+            <label>Cargo / Área en Plantel</label>
+            <input id="recCargo" placeholder="Ej: Jefe de Plantel / Supervisor">
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <div>
+            <label>Resultado de la recepción</label>
+            <select id="recEstado">
+              <option value="Recibido Conforme">✅ Recibido Conforme</option>
+              <option value="Recibido con Observaciones">⚠️ Recibido con Observaciones</option>
+            </select>
+          </div>
+          <div>
+            <label>Observaciones del cliente <span class="muted">(opcional)</span></label>
+            <input id="recObs" placeholder="Ej: Equipo operativo y área limpia">
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+            <label style="margin:0">✍️ Firma Digital del Cliente en Pantalla</label>
+            <button type="button" class="secondary btn-sm" onclick="limpiarFirmaCanvas('canvasFirmaTerreno')">🗑️ Limpiar firma</button>
+          </div>
+          <div class="sig-wrap">
+            <canvas id="canvasFirmaTerreno" class="sig-canvas" width="520" height="155"></canvas>
+            <div class="muted" style="font-size:11.5px;margin-top:4px">Firme aquí con el dedo o lápiz táctil</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="card">
       <button id="btnEnviar" class="primary" onclick="enviar()">ENVIAR REPORTE</button>
       <div id="status" class="status">Con señal se envía de inmediato. Sin señal queda guardado con sus fotos en este teléfono y se envía solo al recuperar cobertura.</div>
@@ -212,6 +295,112 @@ footer a:hover{opacity:1}
         <button id="btnSyncManual" class="secondary hidden" style="padding:7px 12px;font-size:12px" onclick="sync(true)">🔄 Reintentar ahora</button>
       </div>
       <div id="pend" class="muted">Sin pendientes.</div>
+    </div>
+  </section>
+
+  <!-- VISTA EXCLUSIVA PARA RECEPCIÓN DEL CLIENTE (Muestra interactiva y Enlace de Firma Remota ?recepcion=RT-XXXX) -->
+  <section id="vistaCliente" class="hidden">
+    <div class="admin-bar" style="background:#0f766e">
+      <b>✍️ Acta Digital de Recepción de Trabajo — Cliente / Mandante</b>
+      <button id="btnCerrarVistaCliente" type="button" class="secondary btn-sm" onclick="cerrarVistaCliente()">← Volver</button>
+    </div>
+
+    <div id="bannerMuestraCliente" class="card hidden" style="background:#eff6ff;border:1px solid #93c5fd">
+      <b style="color:#1e3a8a;font-size:14px">💡 Muestra Interactiva: ¿Cómo recibe el trabajo el Cliente cuando se requiere?</b>
+      <div class="muted" style="color:#1e40af;margin-top:5px;line-height:1.45">
+        Tienes <b>3 formas combinables</b> de usar la recepción con el cliente según el caso:<br>
+        1️⃣ <b>En Terreno (en el teléfono del trabajador):</b> Al terminar la faena, el trabajador marca <i>"✍️ Recepción Conforme del Cliente en Terreno"</i> y el Jefe de Plantel / Supervisor firma con el dedo ahí mismo.<br>
+        2️⃣ <b>A Distancia por Link de WhatsApp / Correo (esta pantalla):</b> Si el supervisor del cliente no estaba en el plantel, desde Logística pulsas <i>"✍️ Link Recepción Cliente"</i> y le envías un enlace único por WhatsApp. El cliente abre esta pantalla limpia (sin ver jamás horas extras ni datos internos) y firma desde su celular o PC.<br>
+        3️⃣ <b>En Ficha PDF Oficial:</b> La firma digital del cliente queda estampada automáticamente al pie del PDF para respaldar tus Estados de Pago y Cotizaciones.
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;border-bottom:2px solid #17324d;padding-bottom:12px;margin-bottom:14px">
+        <div>
+          <span class="folio-tag" id="cliFolio">RT-MUESTRA</span>
+          <b id="cliLugar" style="font-size:17px;color:#17324d">STUD TANTEHUE</b>
+          <div class="muted" style="margin-top:4px">Ejecutado por: <b>Inversiones y Mantenimiento MYC SpA</b> (RUT 77.547.271-5)</div>
+        </div>
+        <span id="cliEstadoTrabajo" class="badge Terminado">Terminado</span>
+      </div>
+
+      <div class="row" style="font-size:13.5px;margin-bottom:10px">
+        <div class="sublist" style="margin:0">
+          <b>📅 Fecha y Horario de Ejecución:</b><br>
+          <span id="cliFechaHorario">—</span>
+        </div>
+        <div class="sublist" style="margin:0">
+          <b>👷 Cuadrilla MYC SpA en Terreno:</b><br>
+          <span id="cliCuadrilla">—</span>
+        </div>
+      </div>
+
+      <div style="margin-top:10px">
+        <label style="font-size:13px;color:#17324d;margin-bottom:4px">🛠️ Descripción del Trabajo Realizado</label>
+        <div id="cliTrabajo" class="sublist" style="white-space:pre-line;font-size:14px;color:#1f2937;border:1px solid #cbd5e1"></div>
+      </div>
+
+      <div class="row" style="margin-top:8px">
+        <div>
+          <label style="font-size:12.5px;color:#475569;margin-bottom:4px">📦 Materiales Utilizados</label>
+          <div id="cliMateriales" class="sublist"></div>
+        </div>
+        <div>
+          <label style="font-size:12.5px;color:#475569;margin-bottom:4px">🚜 Maquinaria / Equipos</label>
+          <div id="cliMaquinaria" class="sublist"></div>
+        </div>
+      </div>
+
+      <div id="cliFotosWrap" style="margin-top:10px">
+        <label style="font-size:12.5px;color:#475569;margin-bottom:4px">📷 Registro Fotográfico</label>
+        <div id="cliFotos" class="photos"></div>
+      </div>
+    </div>
+
+    <div class="card" style="border:2px solid #0f766e">
+      <h3 style="margin:0 0 10px;color:#0f766e;font-size:16px">✍️ Firma y Recepción del Cliente / Mandante</h3>
+      <div id="cliYaFirmadoBox" class="status ok hidden" style="margin-bottom:12px"></div>
+
+      <div class="row">
+        <div>
+          <label>Nombre y Apellido de quien recibe <span style="color:#dc2626">*</span></label>
+          <input id="cliRecNombre" placeholder="Ej: Marcelo Yáñez">
+        </div>
+        <div>
+          <label>Cargo / Área / Plantel</label>
+          <input id="cliRecCargo" placeholder="Ej: Jefe de Plantel / Supervisor Mantención">
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div>
+          <label>Estado de Recepción</label>
+          <select id="cliRecEstado">
+            <option value="Recibido Conforme">✅ Trabajo Recibido Conforme</option>
+            <option value="Recibido con Observaciones">⚠️ Recibido con Observaciones</option>
+          </select>
+        </div>
+        <div>
+          <label>Observaciones o Comentarios <span class="muted">(opcional)</span></label>
+          <input id="cliRecObs" placeholder="Ej: Se recibe trabajo operativo conforme">
+        </div>
+      </div>
+
+      <div style="margin-top:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <label style="margin:0">Firma Digital de Recepción</label>
+          <button type="button" class="secondary btn-sm" onclick="limpiarFirmaCanvas('canvasFirmaCliente')">🗑️ Limpiar firma</button>
+        </div>
+        <div class="sig-wrap">
+          <canvas id="canvasFirmaCliente" class="sig-canvas" width="520" height="165"></canvas>
+          <div class="muted" style="font-size:11.5px;margin-top:4px">Firme dentro del recuadro con su dedo (celular) o mouse (computador)</div>
+        </div>
+      </div>
+
+      <div style="margin-top:14px">
+        <button id="btnConfirmarRecepcionCliente" type="button" class="success" style="width:100%;font-size:16px;padding:13px" onclick="guardarFirmaClienteRemota()">✅ CONFIRMAR Y FIRMAR RECEPCIÓN DEL TRABAJO</button>
+        <div id="cliRecStatus" class="status hidden"></div>
+      </div>
     </div>
   </section>
 
@@ -350,6 +539,57 @@ footer a:hover{opacity:1}
 const LOGO_MYC = "data:image/jpeg;base64,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";
 
 const lugares=["G 26 REPRODUCCIÓN", "STUD TANTEHUE", "SE SITIO 9", "SE SITIO 3", "SE SITIO 4", "SE SITIO 1", "SE SITIO 2", "SE SITIO 7", "SE SITIO 5", "SE SITIO 6", "SE SITIO 8", "G 14 REPRODUCCIÓN", "G 22 REPRODUCCIÓN", "G 16 REPRODUCCIÓN", "G 15 REPRODUCCIÓN", "G 23 REPRODUCCIÓN", "G 10 REPRODUCCIÓN", "G 24 REPRODUCCIÓN", "G 20 REPRODUCCIÓN", "G 21 REPRODUCCIÓN", "G 17 REPRODUCCIÓN", "G 19 REPRODUCCIÓN", "G 18 REPRODUCCIÓN", "DV LA MINA", "DV LOS TATAS", "DV DIVISADERO", "DV LAS BRISAS", "DV POCILLAS", "DV DON SATA", "DV EL RETORNO", "DV CASTROL", "DV CONCEJALES", "DV PIEDRA DEL JOTE", "DV EL ALCALDE", "DV MR DIC", "DV LA NORIA", "DV PIEDRA DEL TRARO", "DV EL MONTE", "DV MAITENLAHUE", "DV EL YALI", "DV EL MILAGRO", "DV MANZO", "DV ELHUE", "DV CORNECHE", "DV EL TÓTEM", "ENG CHANCÓN 1", "ENG CHANCÓN 2", "ENG EL CARMEN", "ENG LOS GOMEROS", "ENG LA MARAVILLA", "ENG EL QUISCO", "ENG EL ALMENDRO", "ENG ESMERALDA", "ENG TOTIHUE", "ENG. LA LECHERIA", "ENG ARBOLEDA", "Sitio Don Charles", "SITIO RINCÓN DE ABRA", "Sitio La Leonera", "G 6 REPRODUCCIÓN", "G 25 REPRODUCCIÓN", "G 8 REPRODUCCIÓN", "G 5 REPRODUCCIÓN", "G 28 REPRODUCCIÓN", "G 12 REPRODUCCIÓN", "STUD RAMIRANA", "STUD SANTA ROSA", "COYA 2 REPRODUCCIÓN", "COYA 1 REPRODUCCIÓN", "TESTAJE", "G 3 REPRODUCCIÓN", "G 4 REPRODUCCIÓN", "G 9 REPRODUCCIÓN", "G 13", "Cuarentena Idahue", "DV EL MIRADOR", "DV El litre", "DV Rapel", "ENG LOS ALAMOS", "ENG EL ESTERO", "ENG HONORABLE", "ENG LA CAÑA", "ENG LA COPA", "ENG LA TOSCA", "ENG EL PEUMO", "ENG EL ESPINO", "DV LOS LLANOS", "DV LAS MURALLAS", "DV LOS CLONQUIS", "DV VARILLAS", "DV SAN MANUEL", "DV LOS CURUROS", "DV BARRANCAS", "DV EL CAPRICHO", "BIODIG. CORNECHE", "BIODIG. LA ESTRELLA", "BIODIG. LAS PALMAS GR.21", "BIODIG. PERALILLO", "BIODIG. POCILLAS", "BIODIG. RAMIRANA", "BIODIG. SANTA ROSA", "PL COMP. LA ESTRELLA", "PLANTA COMP TANTEHUE", "PLTA COMP MAITENLAHU", "PT. COMP. LA MANGA", "PT. COMP. LA MANGA 2", "PTA COMP VALDEBENITO", "PL TR RILES TANTEHUE", "PT. RILES LA ESTRELLA", "PT. RILES LA MANGA", "PT. RILES MAITENLAHUE", "PT. RILES PERALILLO", "PT. RILES POCILLAS", "PT. RILES RAMIRANA", "PT. RILES VALDEBENIT", "OF CENTRAL RGUA", "STT ARBOLEDA", "STT CASTILLO 6", "STT CASTILLO 8", "STT CHANCÓN 1", "STT CHANCÓN 2", "STT DON CHARLES", "STT EL ALMENDRO", "STT EL CARMEN", "STT EL QUISCO", "STT GOMEROS", "STT GR 9 LA HIGUERA", "STT LOICA ESPINO", "STT LOICA PEUMO", "STT LONGOVILO G14", "STT LONGOVILO G15", "STT LONGOVILO G16", "STT LONGOVILO G22", "STT RINCON DE ABRA", "STT TOTIHUE", "BIODIG. ESTRELLA 1", "BIODIG. PALMAS GR.21", "PT. RILES ESTRELLA", "PT. RILES MAITENLAH", "OCR"];
+
+// Nómina oficial de 42 trabajadores MYC SpA (cargada desde LISTADO TRABAJADORES_.xlsx)
+let trabajadoresCatalogo = [
+  "ABELDAÑO MARTINEZ JAIRO JAVIER",
+  "ALIAGA PARDO KEVIN WILLIAMS",
+  "ALVAREZ MUÑOZ ALFONSO",
+  "ARAUJO CASTILLO WILLIAMS JOSE",
+  "AREVALO VASQUEZ RODOLFO ALEJANDRO",
+  "BECERRA FLORES MATIAS ANDRES",
+  "BETANCOURT OCORO JULIAN ADOLFO",
+  "BUZO BECERRA GUSTAVO ERNESTO",
+  "CASTILLO VASQUEZ JUAN CAMILO",
+  "CENTENO JUAN CARLOS",
+  "CERDA OLMEDO MARCELO ALEXANDER",
+  "CONTRERAS CORREA SANDRO ADAN",
+  "CORREA VENEGAS LUIS HERNAN",
+  "DONOSO LABRA RAUL ANTONIO",
+  "ESPINOZA DIAZ NELSON ALEJANDRO",
+  "FARIAS FUENTES MAURICIO ENRIQUE",
+  "FERNANDEZ FERNANDEZ JOSE MIGUEL",
+  "FLORES REYES GUILLERMO ENRIQUE",
+  "FLORES REYES MARIO JAVIER",
+  "FLORES ROJAS JESUS ALEJANDRO",
+  "GARCIA-HUIDOBRO FUENTES ORLANDO ANDRES",
+  "GARCIA-HUIDOBRO FUENTES PABLO ANDRÉS",
+  "GONZALEZ CONTRERAS HECTOR",
+  "HERRERA FLORES LUIS ALIRO",
+  "HUERTA CONTRERAS GONZALO FRANCISCO",
+  "IBARRA ALARCON JULIO ENRIQUE",
+  "LOYOLA CORNEJO CLAUDIO OSVALDO",
+  "MANZO ALARCON DIEGO ALEJANDRO",
+  "MARTINEZ JORQUERA MARCELO ANTONIO",
+  "MUÑOZ CEDNA LUIS ANDRES",
+  "MUÑOZ CONTRERAS NOLBERTO ANTONIO",
+  "MUÑOZ MOYA HECTOR DEL CARMEN",
+  "NUÑEZ TORO ISAIAS JESUS",
+  "PINEDA RUIZ ANDRES FELIPE",
+  "PINTO ARRIAZA JUAN DEL CARMEN",
+  "QUINTANILLA CONTREAS CAMILO JOSE",
+  "RIOS PEREZ FABIAN ALFREDO",
+  "SILVA ARANEDA SEBASTIÁN ANDRÉS",
+  "TOBAR GONZALEZ EDUARDO ALEXIS",
+  "TOBAR GONZALEZ JULIAN ANSELMO",
+  "VIERA CERDA MIGUEL ANDRES",
+  "VILLAVICENCIO DEVIA SERGIO DEL CARMEN"
+];
+
+let integrantesCuadrillaActual = [];
+let folioClienteActual = "";
+let esMuestraCliente = false;
+const estadoCanvasFirma = {};
 
 const $ = id => document.getElementById(id);
 const API_URL = "api.php";
@@ -642,10 +882,194 @@ function dataUrlToBlob(dataUrl) {
 }
 
 // --- INICIALIZACIÓN ---
+function poblarListasTrabajadores() {
+  if ($("trabajadoresList")) {
+    $("trabajadoresList").innerHTML = trabajadoresCatalogo.map(x => `<option value="${esc(x)}"></option>`).join("");
+  }
+  if ($("integranteSelect")) {
+    $("integranteSelect").innerHTML =
+      `<option value="">— Seleccionar de la lista (${trabajadoresCatalogo.length} trabajadores) —</option>` +
+      trabajadoresCatalogo.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join("");
+  }
+}
+
+async function sincronizarCatalogoTrabajadores() {
+  try {
+    const guardadoLocal = JSON.parse(localStorage.getItem("catalogoTrabajadoresMYC") || "[]");
+    if (Array.isArray(guardadoLocal) && guardadoLocal.length) {
+      guardadoLocal.forEach(w => {
+        if (w && !trabajadoresCatalogo.includes(w)) trabajadoresCatalogo.push(w);
+      });
+    }
+    poblarListasTrabajadores();
+    if (!navigator.onLine) return;
+    const resp = await fetch(API_URL + "?action=workers_catalog");
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (data && Array.isArray(data.workers) && data.workers.length) {
+      data.workers.forEach(w => {
+        if (w && !trabajadoresCatalogo.includes(w)) trabajadoresCatalogo.push(w);
+      });
+      localStorage.setItem("catalogoTrabajadoresMYC", JSON.stringify(trabajadoresCatalogo));
+      poblarListasTrabajadores();
+    }
+  } catch (e) {}
+}
+
+function seleccionarIntegranteDeLista(val) {
+  if (!val) return;
+  $("integranteInput").value = val;
+  agregarIntegranteCuadrilla();
+  $("integranteSelect").value = "";
+}
+
+function toggleOtroIntegrante() {
+  const activo = $("otroIntegrante").checked;
+  $("otroIntegranteBox").classList.toggle("hidden", !activo);
+  if (activo) {
+    $("otroIntegranteTxt").focus();
+  }
+}
+
+function agregarIntegranteCuadrilla(silencioso = false) {
+  const esOtro = $("otroIntegrante").checked;
+  const nombre = (esOtro ? $("otroIntegranteTxt").value : $("integranteInput").value).trim();
+  if (!nombre) {
+    if (!silencioso) alert("Selecciona un trabajador de la lista desplegable o marca 'Otro integrante' para escribir su nombre.");
+    return false;
+  }
+  if (!esOtro && !trabajadoresCatalogo.includes(nombre)) {
+    if (!silencioso) {
+      alert("El trabajador escrito no está en la lista desplegable. Selecciónalo de la lista o marca la casilla 'Otro integrante'.");
+    }
+    return false;
+  }
+  const titular = ($("trabajadorNombre").value.trim() || localStorage.getItem("nombreTrabajadorTerreno") || "").trim();
+  if (titular && nombre.toLowerCase() === titular.toLowerCase()) {
+    if (!silencioso) alert("Ese trabajador ya figura como quien genera el reporte.");
+    return false;
+  }
+  if (!integrantesCuadrillaActual.some(x => x.toLowerCase() === nombre.toLowerCase())) {
+    integrantesCuadrillaActual.push(nombre);
+    if (!trabajadoresCatalogo.includes(nombre)) {
+      trabajadoresCatalogo.push(nombre);
+      localStorage.setItem("catalogoTrabajadoresMYC", JSON.stringify(trabajadoresCatalogo));
+      poblarListasTrabajadores();
+    }
+  }
+  $("integranteInput").value = "";
+  $("otroIntegranteTxt").value = "";
+  $("otroIntegrante").checked = false;
+  toggleOtroIntegrante();
+  renderizarChipsCuadrilla();
+  return true;
+}
+
+function quitarIntegranteCuadrilla(idx) {
+  integrantesCuadrillaActual.splice(idx, 1);
+  renderizarChipsCuadrilla();
+}
+
+function renderizarChipsCuadrilla() {
+  const cont = $("crewChips");
+  const sum = $("crewSummary");
+  if (!cont) return;
+  cont.innerHTML = integrantesCuadrillaActual
+    .map((nom, i) => `<span class="crew-chip">👷 ${esc(nom)} <button type="button" onclick="quitarIntegranteCuadrilla(${i})" title="Quitar">×</button></span>`)
+    .join("");
+  const totalPersonas = 1 + integrantesCuadrillaActual.length;
+  if ($("personas")) {
+    $("personas").value = String(totalPersonas);
+  }
+  if (sum) {
+    sum.innerHTML = integrantesCuadrillaActual.length
+      ? `<b>Total en cuadrilla: ${totalPersonas} personas</b> (1 responsable + ${integrantesCuadrillaActual.length} integrante(s): ${esc(integrantesCuadrillaActual.join(", "))})`
+      : `Sin acompañantes adicionales agregados (1 persona: quien genera el reporte).`;
+  }
+}
+
+// --- FIRMA DIGITAL EN PANTALLA (TERRENO Y VISTA CLIENTE) ---
+function inicializarCanvasFirma(canvasId) {
+  const canvas = $(canvasId);
+  if (!canvas || estadoCanvasFirma[canvasId]) return;
+  const ctx = canvas.getContext("2d");
+  ctx.strokeStyle = "#0f172a";
+  ctx.lineWidth = 2.4;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  const state = { drawing: false, hasStrokes: false };
+  estadoCanvasFirma[canvasId] = state;
+
+  const getPos = ev => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / (rect.width || 1);
+    const scaleY = canvas.height / (rect.height || 1);
+    const touch = ev.touches && ev.touches[0] ? ev.touches[0] : ev;
+    return {
+      x: (touch.clientX - rect.left) * scaleX,
+      y: (touch.clientY - rect.top) * scaleY
+    };
+  };
+
+  const start = ev => {
+    ev.preventDefault();
+    state.drawing = true;
+    state.hasStrokes = true;
+    const p = getPos(ev);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+  };
+  const move = ev => {
+    if (!state.drawing) return;
+    ev.preventDefault();
+    const p = getPos(ev);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+  };
+  const end = () => {
+    state.drawing = false;
+  };
+
+  canvas.addEventListener("mousedown", start);
+  canvas.addEventListener("mousemove", move);
+  window.addEventListener("mouseup", end);
+  canvas.addEventListener("touchstart", start, { passive: false });
+  canvas.addEventListener("touchmove", move, { passive: false });
+  canvas.addEventListener("touchend", end);
+}
+
+function limpiarFirmaCanvas(canvasId) {
+  const canvas = $(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (estadoCanvasFirma[canvasId]) {
+    estadoCanvasFirma[canvasId].hasStrokes = false;
+  }
+}
+
+function obtenerDataUrlFirma(canvasId) {
+  const canvas = $(canvasId);
+  const st = estadoCanvasFirma[canvasId];
+  if (!canvas || !st || !st.hasStrokes) return "";
+  return canvas.toDataURL("image/png");
+}
+
+function toggleRecepcionTerreno() {
+  const req = $("reqRecepcionCliente") && $("reqRecepcionCliente").checked;
+  if ($("boxRecepcionTerreno")) {
+    $("boxRecepcionTerreno").classList.toggle("hidden", !req);
+  }
+  if (req) {
+    inicializarCanvasFirma("canvasFirmaTerreno");
+  }
+}
+
 async function init() {
   $("hdrLogo").src = LOGO_MYC;
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js?v=12").then(reg => {
+    navigator.serviceWorker.register("sw.js?v=13").then(reg => {
       try { reg.update(); } catch (e) {}
     }).catch(() => {});
   }
@@ -658,6 +1082,11 @@ async function init() {
     }
   }
   $("lugaresList").innerHTML = lugares.map(x => `<option value="${esc(x)}"></option>`).join("");
+  poblarListasTrabajadores();
+  sincronizarCatalogoTrabajadores();
+  inicializarCanvasFirma("canvasFirmaTerreno");
+  inicializarCanvasFirma("canvasFirmaCliente");
+
   const d = new Date();
   const z = new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   $("fi").value = z;
@@ -669,7 +1098,11 @@ async function init() {
   await pend();
   sync();
 
-  if (window.location.hash === "#logistica" || window.location.search.indexOf("logistica") !== -1) {
+  const params = new URLSearchParams(window.location.search);
+  const folioRec = params.get("recepcion");
+  if (folioRec) {
+    abrirRecepcionClientePorFolio(folioRec);
+  } else if (window.location.hash === "#logistica" || window.location.search.indexOf("logistica") !== -1) {
     abrirLogistica();
   }
 }
@@ -737,10 +1170,17 @@ function build() {
     $("workerSavedBox").classList.add("hidden");
     $("workerInputBox").classList.remove("hidden");
     $("trabajadorNombre").focus();
-    throw Error("Ingresa tu Nombre y Apellido en '¿Quién genera el reporte?'. Quedará guardado en tu teléfono para los próximos envíos.");
+    throw Error("Ingresa o selecciona tu Nombre y Apellido en '¿Quién genera el reporte?'. Quedará guardado en tu teléfono para los próximos envíos.");
   }
   localStorage.setItem("nombreTrabajadorTerreno", nombreTrab);
   actualizarVistaTrabajador();
+
+  // Si escribió o seleccionó un integrante pero olvidó pulsar "+ Agregar integrante", lo agregamos automáticamente
+  const pendienteIntegrante = ($("otroIntegrante") && $("otroIntegrante").checked ? $("otroIntegranteTxt").value : $("integranteInput").value).trim();
+  if (pendienteIntegrante) {
+    const okAdd = agregarIntegranteCuadrilla(false);
+    if (!okAdd) throw Error("Verifica el integrante adicional de la cuadrilla antes de enviar.");
+  }
 
   const otro = $("otro").checked;
   const lugar = otro ? $("otroLugar").value.trim() : $("lugar").value.trim();
@@ -751,17 +1191,42 @@ function build() {
   if (!$("trabajo").value.trim()) throw Error("Ingresa la descripción del trabajo realizado.");
   if (!rx.test($("hi").value) || !rx.test($("ht").value)) throw Error("Ingresa la hora como HH:MM, por ejemplo 08:30.");
 
+  let recepcionCliente = null;
+  if ($("reqRecepcionCliente") && $("reqRecepcionCliente").checked) {
+    const recNom = ($("recNombre") ? $("recNombre").value : "").trim();
+    if (!recNom) {
+      $("recNombre").focus();
+      throw Error("Ingresa el Nombre de quien recibe el trabajo por parte del cliente, o desmarca la casilla de Recepción en Terreno.");
+    }
+    const firmaUrl = obtenerDataUrlFirma("canvasFirmaTerreno");
+    recepcionCliente = {
+      requerido: true,
+      firmado: Boolean(firmaUrl || recNom),
+      estado: $("recEstado") ? $("recEstado").value : "Recibido Conforme",
+      nombre: recNom,
+      cargo: ($("recCargo") ? $("recCargo").value : "").trim(),
+      observacion: ($("recObs") ? $("recObs").value : "").trim(),
+      firmaDataUrl: firmaUrl,
+      modalidad: "En Terreno",
+      fechaFirma: new Date().toISOString()
+    };
+  }
+
+  const cantPersonas = Math.max(1 + integrantesCuadrillaActual.length, parseInt($("personas").value || "1", 10) || 1);
   const uid = "UID-" + Date.now() + "-" + Math.random().toString(16).slice(2, 8);
   return {
     id: uid,
     clientUid: uid,
     trabajador: nombreTrab,
+    integrantes: [...integrantesCuadrillaActual],
+    solicita: recepcionCliente ? recepcionCliente.nombre : "",
+    recepcionCliente,
     lugar,
     fechaInicio: $("fi").value,
     fechaTermino: $("ft").value,
     horaInicio: $("hi").value,
     horaTermino: $("ht").value,
-    personas: $("personas").value,
+    personas: String(cantPersonas),
     tipoHorario: $("tipoHorario") ? $("tipoHorario").value : "Normal",
     trabajo: $("trabajo").value.trim(),
     materiales: items("mat"),
@@ -886,6 +1351,22 @@ function limpiar() {
   $("fotos").value = "";
   $("fotoPreview").innerHTML = "";
   fotosComprimidas = [];
+  integrantesCuadrillaActual = [];
+  renderizarChipsCuadrilla();
+  if ($("integranteInput")) $("integranteInput").value = "";
+  if ($("otroIntegranteTxt")) $("otroIntegranteTxt").value = "";
+  if ($("otroIntegrante")) {
+    $("otroIntegrante").checked = false;
+    toggleOtroIntegrante();
+  }
+  if ($("reqRecepcionCliente")) {
+    $("reqRecepcionCliente").checked = false;
+    toggleRecepcionTerreno();
+  }
+  if ($("recNombre")) $("recNombre").value = "";
+  if ($("recCargo")) $("recCargo").value = "";
+  if ($("recObs")) $("recObs").value = "";
+  limpiarFirmaCanvas("canvasFirmaTerreno");
   if ($("tipoHorario")) $("tipoHorario").value = "Normal";
   $("otro").checked = false;
   toggleOtro();
@@ -1230,6 +1711,16 @@ async function cargar() {
               .map(m => `<div class="item"><input type="number" min="0" step="0.01" placeholder="Cant." value="${esc(m.cantidad)}"><input placeholder="Unidad" value="${esc(m.unidad)}"><input placeholder="Equipo / maquinaria" value="${esc(m.descripcion)}"><button type="button" onclick="this.parentElement.remove()">×</button></div>`)
               .join("");
 
+            const integrantesTxt = Array.isArray(r.integrantes) && r.integrantes.length
+              ? ` · <b>👥 Integrantes:</b> ${esc(r.integrantes.join(", "))}`
+              : "";
+            const recCli = r.recepcionCliente && (r.recepcionCliente.firmado || r.recepcionCliente.nombre)
+              ? r.recepcionCliente
+              : null;
+            const recCliBadge = recCli
+              ? `<div style="margin:6px 0"><span class="client-rec-badge">✍️ ${esc(recCli.estado || "Recibido Conforme")}: ${esc(recCli.nombre)}${recCli.cargo ? " (" + esc(recCli.cargo) + ")" : ""}${recCli.observacion ? " — \"" + esc(recCli.observacion) + "\"" : ""}</span></div>`
+              : "";
+
             return `<div class="report" id="rep-${idx}">
               <h3>
                 <label style="display:inline-flex;align-items:center;gap:7px;margin:0;cursor:pointer;font-size:15px">
@@ -1240,8 +1731,9 @@ async function cargar() {
                 </label>
                 <span class="badge ${esc(estClass)}">${esc(r.estado)}</span>
               </h3>
-              <p><b>👷 Generado por:</b> ${esc(r.trabajador || "No indicado")} · <b>Cuadrilla:</b> ${esc(r.personas)} pers. · <b>Duración total:</b> ${hrs} hrs${r.solicita ? ` · <b>Solicita:</b> ${esc(r.solicita)}` : ""}</p>
+              <p><b>👷 Generado por:</b> ${esc(r.trabajador || "No indicado")}${integrantesTxt} · <b>Total cuadrilla:</b> ${esc(r.personas)} pers. · <b>Duración total:</b> ${hrs} hrs${r.solicita ? ` · <b>Solicita:</b> ${esc(r.solicita)}` : ""}</p>
               <p><b>📅 Fecha:</b> ${esc(r.fechaInicio)} (${esc(infoHor.nombreDia)}) al ${esc(r.fechaTermino || r.fechaInicio)} · <b>🕒 Horario:</b> ${esc(r.horaInicio)}–${esc(r.horaTermino)}</p>
+              ${recCliBadge}
               <div class="log-internal-box ${boxClass}" title="Información confidencial exclusiva de Logística (no visible para trabajador ni cliente)">
                 <span style="font-weight:700;color:#475569">🔒 Control Horario (Solo Logística):</span>
                 <span class="log-pill ${pillClass}">${esc(infoHor.etiquetaPago)}</span>
@@ -1261,6 +1753,7 @@ async function cargar() {
               <div class="report-actions">
                 <button type="button" class="secondary btn-sm" onclick="imprimirFicha(${idx})">📄 Ficha PDF</button>
                 <button type="button" class="success btn-sm" onclick="exportarExcelIndividual(${idx})">📊 Excel Cotización MYC</button>
+                <button type="button" class="secondary btn-sm" style="background:#ecfdf5;color:#065f46;border:1px solid #6ee7b7" onclick="gestionarRecepcionCliente(${idx})">✍️ Recepción Cliente</button>
                 <button type="button" class="secondary btn-sm" onclick="enviarWhatsAppManual(${idx})">💬 Enviar a WhatsApp</button>
                 <button type="button" class="secondary btn-sm" onclick="mostrarEdicion(${idx})">✏️ Editar Completo</button>
                 ${r.esUnificado ? `<button type="button" class="secondary btn-sm" style="background:#e0e7ff;color:#3730a3" onclick="separarReporteUnificado('${esc(r.id)}')">↩️ Separar Originales</button>` : ""}
@@ -1317,13 +1810,17 @@ async function cargar() {
                 </div>
                 <div class="row" style="margin-top:8px">
                   <div>
-                    <label>Generado por (Trabajador / Cuadrilla)</label>
-                    <input id="editTrab-${idx}" value="${esc(r.trabajador || "")}">
+                    <label>Generado por (Responsable)</label>
+                    <input id="editTrab-${idx}" list="trabajadoresList" value="${esc(r.trabajador || "")}">
                   </div>
                   <div>
                     <label>Solicita (Mandante / Supervisor Cliente)</label>
                     <input id="editSol-${idx}" placeholder="Ej: MARCELO YAÑEZ" value="${esc(r.solicita || "")}">
                   </div>
+                </div>
+                <div style="margin-top:8px">
+                  <label>Integrantes adicionales de la cuadrilla (separados por coma)</label>
+                  <input id="editInt-${idx}" list="trabajadoresList" placeholder="Ej: BECERRA FLORES MATIAS ANDRES, CENTENO JUAN CARLOS" value="${esc(Array.isArray(r.integrantes) ? r.integrantes.join(", ") : "")}">
                 </div>
                 <div style="margin-top:8px">
                   <label>Trabajo realizado</label>
@@ -1372,6 +1869,10 @@ async function guardarEdicion(id, idx) {
   const tipoHorario = $("editTipoHor-" + idx) ? $("editTipoHor-" + idx).value : "Normal";
   const trabajador = $("editTrab-" + idx).value.trim();
   const solicita = $("editSol-" + idx).value.trim();
+  const integrantes = ($("editInt-" + idx) ? $("editInt-" + idx).value : "")
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
   const trabajo = $("editDesc-" + idx).value.trim();
   const materiales = items("editMatList-" + idx);
   const maquinaria = items("editMaqList-" + idx);
@@ -1400,6 +1901,7 @@ async function guardarEdicion(id, idx) {
         personas,
         tipoHorario,
         trabajador,
+        integrantes,
         solicita,
         trabajo,
         materiales,
@@ -1765,6 +2267,197 @@ setInterval(async () => {
   } catch (e) {}
 }, 25000);
 
+// --- PORTAL DE RECEPCIÓN CONFORME DEL CLIENTE (EN TERRENO, POR LINK REMOTO Y MUESTRA INTERACTIVA) ---
+function renderizarDatosEnVistaCliente(r, mostrarGuiaMuestra = false) {
+  folioClienteActual = r.id || "RT-MUESTRA";
+  esMuestraCliente = mostrarGuiaMuestra;
+
+  $("trabajador").classList.add("hidden");
+  $("logistica").classList.add("hidden");
+  $("vistaCliente").classList.remove("hidden");
+  if ($("bannerMuestraCliente")) {
+    $("bannerMuestraCliente").classList.toggle("hidden", !mostrarGuiaMuestra);
+  }
+
+  $("cliFolio").textContent = r.id || "RT-MUESTRA";
+  $("cliLugar").textContent = r.lugar || "STUD TANTEHUE";
+  $("cliEstadoTrabajo").textContent = r.estado || "Terminado";
+  $("cliFechaHorario").textContent = `${r.fechaInicio || ""} al ${r.fechaTermino || r.fechaInicio || ""} · ${r.horaInicio || ""} a ${r.horaTermino || ""} hrs`;
+
+  const integ = Array.isArray(r.integrantes) && r.integrantes.length ? ` + ${r.integrantes.join(", ")}` : "";
+  $("cliCuadrilla").textContent = `${r.trabajador || "No indicado"}${integ} (${r.personas || 1} pers.)`;
+  $("cliTrabajo").textContent = r.trabajo || "Sin descripción";
+
+  $("cliMateriales").innerHTML = (r.materiales || []).length
+    ? (r.materiales || []).map(m => `• ${esc(m.cantidad)} ${esc(m.unidad)} ${esc(m.descripcion)}`).join("<br>")
+    : `<span class="muted">Sin materiales registrados</span>`;
+
+  $("cliMaquinaria").innerHTML = (r.maquinaria || []).length
+    ? (r.maquinaria || []).map(m => `• ${esc(m.cantidad)} ${esc(m.unidad)} ${esc(m.descripcion)}`).join("<br>")
+    : `<span class="muted">Sin maquinaria registrada</span>`;
+
+  const fotos = r.fotos || [];
+  $("cliFotosWrap").classList.toggle("hidden", fotos.length === 0);
+  $("cliFotos").innerHTML = fotos.map(f => `<a href="${esc(f.url)}" target="_blank"><img src="${esc(f.url)}"></a>`).join("");
+
+  const rec = r.recepcionCliente || null;
+  $("cliRecNombre").value = (rec && rec.nombre) || r.solicita || "";
+  $("cliRecCargo").value = (rec && rec.cargo) || "";
+  $("cliRecEstado").value = (rec && rec.estado) || "Recibido Conforme";
+  $("cliRecObs").value = (rec && rec.observacion) || "";
+  limpiarFirmaCanvas("canvasFirmaCliente");
+  inicializarCanvasFirma("canvasFirmaCliente");
+  $("cliRecStatus").classList.add("hidden");
+
+  if (rec && rec.firmado) {
+    $("cliYaFirmadoBox").classList.remove("hidden");
+    $("cliYaFirmadoBox").innerHTML =
+      `<strong>✓ Este trabajo ya cuenta con recepción registrada:</strong> ${esc(rec.estado)} por <b>${esc(rec.nombre)}</b>` +
+      (rec.cargo ? ` (${esc(rec.cargo)})` : "") +
+      (rec.observacion ? `<br>Observación: <i>"${esc(rec.observacion)}"</i>` : "");
+  } else {
+    $("cliYaFirmadoBox").classList.add("hidden");
+  }
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function abrirMuestraRecepcionCliente() {
+  const titular = ($("trabajadorNombre").value.trim() || localStorage.getItem("nombreTrabajadorTerreno") || "CERDA OLMEDO MARCELO ALEXANDER").trim();
+  const integ = integrantesCuadrillaActual.length
+    ? [...integrantesCuadrillaActual]
+    : ["BECERRA FLORES MATIAS ANDRES", "CENTENO JUAN CARLOS"];
+  const lugarAct = ($("otro").checked ? $("otroLugar").value.trim() : $("lugar").value.trim()) || "STUD TANTEHUE";
+  const trabAct = $("trabajo").value.trim() || "Se realiza modificación y mantención preventiva en línea operativa, pruebas de presión y entrega de área limpia.";
+  const muestra = {
+    id: "RT-MUESTRA",
+    lugar: lugarAct,
+    estado: $("estado").value || "Terminado",
+    fechaInicio: $("fi").value || new Date().toISOString().slice(0, 10),
+    fechaTermino: $("ft").value || new Date().toISOString().slice(0, 10),
+    horaInicio: $("hi").value || "08:30",
+    horaTermino: $("ht").value || "17:30",
+    trabajador: titular,
+    integrantes: integ,
+    personas: String(1 + integ.length),
+    trabajo: trabAct,
+    materiales: items("mat").length ? items("mat") : [{ cantidad: "4", unidad: "UN", descripcion: "Coplas de unión reforzadas" }],
+    maquinaria: items("maq").length ? items("maq") : [{ cantidad: "1", unidad: "EQ", descripcion: "Equipo de termofusión y herramientas menores" }],
+    fotos: []
+  };
+  renderizarDatosEnVistaCliente(muestra, true);
+}
+
+async function abrirRecepcionClientePorFolio(folio) {
+  try {
+    const resp = await fetch(API_URL + "?action=client_view&id=" + encodeURIComponent(folio));
+    if (!resp.ok) throw new Error();
+    const data = await resp.json();
+    if (data && data.report) {
+      renderizarDatosEnVistaCliente(data.report, false);
+      return;
+    }
+  } catch (e) {}
+  alert("No se encontró el reporte solicitado para recepción.");
+}
+
+function cerrarVistaCliente() {
+  if (window.location.search.indexOf("recepcion=") !== -1) {
+    history.replaceState(null, "", window.location.pathname);
+  }
+  $("vistaCliente").classList.add("hidden");
+  if (sessionStorage.getItem("adminPinTerreno")) {
+    $("logistica").classList.remove("hidden");
+    cargar();
+  } else {
+    $("trabajador").classList.remove("hidden");
+  }
+}
+
+async function guardarFirmaClienteRemota() {
+  const nombre = $("cliRecNombre").value.trim();
+  if (!nombre) {
+    alert("Por favor ingrese el Nombre y Apellido de quien recibe el trabajo.");
+    $("cliRecNombre").focus();
+    return;
+  }
+  const firmaDataUrl = obtenerDataUrlFirma("canvasFirmaCliente");
+  const estado = $("cliRecEstado").value;
+  const cargo = $("cliRecCargo").value.trim();
+  const observacion = $("cliRecObs").value.trim();
+
+  if (esMuestraCliente || folioClienteActual === "RT-MUESTRA") {
+    const st = $("cliRecStatus");
+    st.className = "status ok";
+    st.classList.remove("hidden");
+    st.innerHTML =
+      `<strong>✓ ¡Muestra de Recepción Confirmada!</strong><br>` +
+      `En un reporte real, esta firma de <b>${esc(nombre)}</b> (${esc(estado)}) queda guardada en el Folio, envía aviso automático al correo de Logística y se estampa en el PDF oficial.`;
+    return;
+  }
+
+  const btn = $("btnConfirmarRecepcionCliente");
+  btn.disabled = true;
+  btn.textContent = "GUARDANDO RECEPCIÓN...";
+  try {
+    const resp = await fetch(API_URL + "?action=client_sign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: folioClienteActual,
+        nombre,
+        cargo,
+        estado,
+        observacion,
+        firmaDataUrl,
+        modalidad: "Link Cliente"
+      })
+    });
+    if (!resp.ok) throw new Error();
+    const st = $("cliRecStatus");
+    st.className = "status ok";
+    st.classList.remove("hidden");
+    st.innerHTML = `<strong>✓ Recepción registrada exitosamente.</strong> Muchas gracias, <b>${esc(nombre)}</b>. Se ha enviado respaldo a Inversiones y Mantenimiento MYC SpA.`;
+  } catch (e) {
+    alert("No se pudo guardar la recepción en este momento. Intente nuevamente.");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "✅ CONFIRMAR Y FIRMAR RECEPCIÓN DEL TRABAJO";
+  }
+}
+
+function gestionarRecepcionCliente(idx) {
+  const r = ultimosReportesCargados[idx];
+  if (!r) return;
+  const linkCliente = `${window.location.origin}${window.location.pathname}?recepcion=${encodeURIComponent(r.id)}`;
+  const op = prompt(
+    `✍️ RECEPCIÓN DEL CLIENTE — FOLIO ${r.id} (${r.lugar})\n\n` +
+    `Elige cómo deseas gestionar la recepción con el cliente:\n` +
+    `1 = Abrir pantalla de Recepción / Firma ahora mismo\n` +
+    `2 = Enviar Link de Recepción al Cliente por WhatsApp\n` +
+    `3 = Copiar Link de Recepción (${linkCliente})`,
+    "1"
+  );
+  if (!op) return;
+  if (op.trim() === "1") {
+    renderizarDatosEnVistaCliente(r, false);
+  } else if (op.trim() === "2") {
+    const msg =
+      `📋 *Acta de Recepción de Trabajo - MYC SpA*\n` +
+      `• *Folio:* ${r.id}\n` +
+      `• *Lugar / Plantel:* ${r.lugar}\n` +
+      `• *Fecha:* ${r.fechaInicio}\n` +
+      `• *Trabajo:* ${r.trabajo}\n\n` +
+      `✍️ Para revisar el detalle y firmar la recepción conforme desde su teléfono o PC, abra este enlace:\n${linkCliente}`;
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, "_blank");
+  } else if (op.trim() === "3") {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(linkCliente).then(() => alert("Link copiado al portapapeles:\n" + linkCliente));
+    } else {
+      prompt("Copia este enlace para el cliente:", linkCliente);
+    }
+  }
+}
+
 function imprimirFicha(idx) {
   const r = ultimosReportesCargados[idx];
   if (!r) return;
@@ -1784,6 +2477,43 @@ function imprimirFicha(idx) {
         .map(f => `<div class="pitem"><img src="${baseHref + esc(f.url).replace(/^\//, "")}"></div>`)
         .join("")}</div></div>`
     : "";
+
+  const integrantesPdf = Array.isArray(r.integrantes) && r.integrantes.length
+    ? `<br><span style="font-size:12px;color:#334155"><b>Integrantes cuadrilla:</b> ${esc(r.integrantes.join(", "))}</span>`
+    : "";
+
+  const rec = r.recepcionCliente && (r.recepcionCliente.firmado || r.recepcionCliente.nombre) ? r.recepcionCliente : null;
+  const recepcionPdfHtml = rec
+    ? `<div class="sec" style="margin-top:20px;page-break-inside:avoid">
+        <h3>Acta de Recepción Conforme del Cliente</h3>
+        <table class="meta" style="margin-bottom:0">
+          <tr>
+            <th>Recibido por</th><td><b>${esc(rec.nombre || "—")}</b>${rec.cargo ? ` (${esc(rec.cargo)})` : ""}</td>
+            <th>Estado Recepción</th><td><b>${esc(rec.estado || "Recibido Conforme")}</b></td>
+          </tr>
+          <tr>
+            <th>Observaciones</th><td>${esc(rec.observacion || "Sin observaciones")}</td>
+            <th>Firma Cliente</th>
+            <td style="text-align:center;background:#fff">
+              ${rec.firmaDataUrl ? `<img src="${rec.firmaDataUrl}" style="max-height:70px;max-width:220px;object-fit:contain">` : `<div style="height:50px"></div>`}
+              <div style="font-size:10.5px;color:#64748b;border-top:1px solid #cbd5e1;margin-top:4px;padding-top:2px">Firma Recepción (${esc((rec.fechaFirma || "").slice(0, 16).replace("T", " "))})</div>
+            </td>
+          </tr>
+        </table>
+      </div>`
+    : `<div class="sec" style="margin-top:22px;page-break-inside:avoid">
+        <h3>Recepción Conforme del Trabajo (Cliente / Mandante)</h3>
+        <table class="meta" style="margin-bottom:0">
+          <tr>
+            <th>Nombre Receptor</th><td style="width:35%">${esc(r.solicita || "")}&nbsp;</td>
+            <th>Fecha Recepción</th><td>&nbsp;</td>
+          </tr>
+          <tr>
+            <th>Observaciones</th><td style="height:52px">&nbsp;</td>
+            <th>Firma y Timbre</th><td style="height:52px">&nbsp;</td>
+          </tr>
+        </table>
+      </div>`;
 
   const win = window.open("", "_blank");
   win.document.write(`<!doctype html>
@@ -1837,7 +2567,7 @@ function imprimirFicha(idx) {
   </tr>
   <tr>
     <th>Lugar / Plantel</th><td><b>${esc(r.lugar)}</b></td>
-    <th>Generado por</th><td><b>${esc(r.trabajador || "No indicado")}</b></td>
+    <th>Cuadrilla MYC</th><td><b>${esc(r.trabajador || "No indicado")}</b>${integrantesPdf}</td>
   </tr>
   <tr>
     <th>Fecha Inicio</th><td>${esc(r.fechaInicio)} (${esc(r.horaInicio)} hrs)</td>
@@ -1861,6 +2591,7 @@ function imprimirFicha(idx) {
   <table class="list"><thead><tr><th style="width:90px">Cantidad</th><th style="width:110px">Unidad</th><th>Descripción</th></tr></thead><tbody>${maqRows}</tbody></table>
 </div>
 ${fotosHtml}
+${recepcionPdfHtml}
 </body></html>`);
   win.document.close();
 }
