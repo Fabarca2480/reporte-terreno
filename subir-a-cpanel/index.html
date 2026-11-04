@@ -164,17 +164,26 @@ footer a:hover{opacity:1}
     </div>
 
     <div class="card">
-      <label>Lugar <span style="color:#dc2626">*</span></label>
-      <input id="lugar" list="lugaresList" placeholder="Escribe parte del lugar, por ejemplo: bri">
-      <datalist id="lugaresList"></datalist>
-      <div class="muted" style="margin-top:4px">Busca escribiendo algunas letras.</div>
-      <div style="margin-top:9px">
-        <label style="font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer">
-          <input id="otro" type="checkbox" style="width:auto" onchange="toggleOtro()"> Otro lugar
-        </label>
-      </div>
-      <div id="otroBox" class="hidden" style="margin-top:8px">
-        <input id="otroLugar" placeholder="Escribe el lugar de trabajo">
+      <div class="row">
+        <div>
+          <label>Lugar <span style="color:#dc2626">*</span></label>
+          <input id="lugar" list="lugaresList" placeholder="Escribe parte del lugar, por ejemplo: bri">
+          <datalist id="lugaresList"></datalist>
+          <div class="muted" style="margin-top:4px">Busca escribiendo algunas letras.</div>
+          <div style="margin-top:9px">
+            <label style="font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer">
+              <input id="otro" type="checkbox" style="width:auto" onchange="toggleOtro()"> Otro lugar
+            </label>
+          </div>
+          <div id="otroBox" class="hidden" style="margin-top:8px">
+            <input id="otroLugar" placeholder="Escribe el lugar de trabajo">
+          </div>
+        </div>
+        <div>
+          <label>🔢 N° de Aviso Cliente <span class="muted">(opcional)</span></label>
+          <input id="numeroAviso" placeholder="Ej: 10458920 (si el cliente entregó N° de aviso)" oninput="if($('recNumeroAviso'))$('recNumeroAviso').value=this.value">
+          <div class="muted" style="margin-top:4px">Número de aviso u orden entregada por el cliente.</div>
+        </div>
       </div>
     </div>
 
@@ -254,11 +263,15 @@ footer a:hover{opacity:1}
             <input id="recNombre" placeholder="Ej: Marcelo Yáñez">
           </div>
           <div>
-            <label>Cargo / Área en Plantel</label>
-            <input id="recCargo" placeholder="Ej: Jefe de Plantel / Supervisor">
+            <label>🔢 N° de Aviso Cliente <span class="muted">(si lo entrega al recibir)</span></label>
+            <input id="recNumeroAviso" placeholder="Ej: 10458920" oninput="if($('numeroAviso'))$('numeroAviso').value=this.value">
           </div>
         </div>
         <div class="row" style="margin-top:10px">
+          <div>
+            <label>Cargo / Área en Plantel</label>
+            <input id="recCargo" placeholder="Ej: Jefe de Plantel / Supervisor">
+          </div>
           <div>
             <label>Resultado de la recepción</label>
             <select id="recEstado">
@@ -266,10 +279,10 @@ footer a:hover{opacity:1}
               <option value="Recibido con Observaciones">⚠️ Recibido con Observaciones</option>
             </select>
           </div>
-          <div>
-            <label>Observaciones del cliente <span class="muted">(opcional)</span></label>
-            <input id="recObs" placeholder="Ej: Equipo operativo y área limpia">
-          </div>
+        </div>
+        <div style="margin-top:10px">
+          <label>Observaciones del cliente <span class="muted">(opcional)</span></label>
+          <input id="recObs" placeholder="Ej: Equipo operativo y área limpia">
         </div>
         <div style="margin-top:10px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
@@ -368,11 +381,15 @@ footer a:hover{opacity:1}
           <input id="cliRecNombre" placeholder="Ej: Marcelo Yáñez">
         </div>
         <div>
-          <label>Cargo / Área / Plantel</label>
-          <input id="cliRecCargo" placeholder="Ej: Jefe de Plantel / Supervisor Mantención">
+          <label>🔢 N° de Aviso Cliente <span class="muted">(opcional)</span></label>
+          <input id="cliRecAviso" placeholder="Ej: 10458920">
         </div>
       </div>
       <div class="row" style="margin-top:10px">
+        <div>
+          <label>Cargo / Área / Plantel</label>
+          <input id="cliRecCargo" placeholder="Ej: Jefe de Plantel / Supervisor Mantención">
+        </div>
         <div>
           <label>Estado de Recepción</label>
           <select id="cliRecEstado">
@@ -380,10 +397,10 @@ footer a:hover{opacity:1}
             <option value="Recibido con Observaciones">⚠️ Recibido con Observaciones</option>
           </select>
         </div>
-        <div>
-          <label>Observaciones o Comentarios <span class="muted">(opcional)</span></label>
-          <input id="cliRecObs" placeholder="Ej: Se recibe trabajo operativo conforme">
-        </div>
+      </div>
+      <div style="margin-top:10px">
+        <label>Observaciones o Comentarios <span class="muted">(opcional)</span></label>
+        <input id="cliRecObs" placeholder="Ej: Se recibe trabajo operativo conforme">
       </div>
 
       <div style="margin-top:12px">
@@ -1069,7 +1086,7 @@ function toggleRecepcionTerreno() {
 async function init() {
   $("hdrLogo").src = LOGO_MYC;
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js?v=13").then(reg => {
+    navigator.serviceWorker.register("sw.js?v=14").then(reg => {
       try { reg.update(); } catch (e) {}
     }).catch(() => {});
   }
@@ -1213,12 +1230,14 @@ function build() {
   }
 
   const cantPersonas = Math.max(1 + integrantesCuadrillaActual.length, parseInt($("personas").value || "1", 10) || 1);
+  const numeroAviso = (($("numeroAviso") ? $("numeroAviso").value : "") || ($("recNumeroAviso") ? $("recNumeroAviso").value : "")).trim();
   const uid = "UID-" + Date.now() + "-" + Math.random().toString(16).slice(2, 8);
   return {
     id: uid,
     clientUid: uid,
     trabajador: nombreTrab,
     integrantes: [...integrantesCuadrillaActual],
+    numeroAviso,
     solicita: recepcionCliente ? recepcionCliente.nombre : "",
     recepcionCliente,
     lugar,
@@ -1363,6 +1382,8 @@ function limpiar() {
     $("reqRecepcionCliente").checked = false;
     toggleRecepcionTerreno();
   }
+  if ($("numeroAviso")) $("numeroAviso").value = "";
+  if ($("recNumeroAviso")) $("recNumeroAviso").value = "";
   if ($("recNombre")) $("recNombre").value = "";
   if ($("recCargo")) $("recCargo").value = "";
   if ($("recObs")) $("recObs").value = "";
@@ -1696,6 +1717,9 @@ async function cargar() {
             const badgeUnificado = r.esUnificado
               ? `<span class="badge" style="background:#e0e7ff;color:#3730a3;border:1px solid #a5b4fc">🔗 Unificado (${esc((r.foliosUnificados || []).join(" + "))})</span>`
               : "";
+            const badgeAviso = r.numeroAviso
+              ? `<span class="badge" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d">🔢 Aviso N° ${esc(r.numeroAviso)}</span>`
+              : "";
             const jornadasHtml = (r.esUnificado && Array.isArray(r.jornadasUnificadas) && r.jornadasUnificadas.length > 1)
               ? `<div class="sublist" style="background:#eef2ff;border:1px solid #c7d2fe"><b>📅 Detalle de Jornadas / Grupos Unificados (${r.jornadasUnificadas.length}):</b><br>` +
                 r.jornadasUnificadas.map(j => {
@@ -1727,11 +1751,12 @@ async function cargar() {
                   <input type="checkbox" class="chk-unify" value="${esc(r.id)}" onchange="actualizarBarraUnificar()" style="width:17px;height:17px;cursor:pointer" title="Seleccionar para unificar con otros reportes">
                   <span class="folio-tag">${esc(r.id)}</span>
                   ${badgeUnificado}
+                  ${badgeAviso}
                   <span>📍 ${esc(r.lugar)}</span>
                 </label>
                 <span class="badge ${esc(estClass)}">${esc(r.estado)}</span>
               </h3>
-              <p><b>👷 Generado por:</b> ${esc(r.trabajador || "No indicado")}${integrantesTxt} · <b>Total cuadrilla:</b> ${esc(r.personas)} pers. · <b>Duración total:</b> ${hrs} hrs${r.solicita ? ` · <b>Solicita:</b> ${esc(r.solicita)}` : ""}</p>
+              <p><b>👷 Generado por:</b> ${esc(r.trabajador || "No indicado")}${integrantesTxt} · <b>Total cuadrilla:</b> ${esc(r.personas)} pers. · <b>Duración total:</b> ${hrs} hrs${r.numeroAviso ? ` · <b>🔢 N° Aviso:</b> ${esc(r.numeroAviso)}` : ""}${r.solicita ? ` · <b>Solicita:</b> ${esc(r.solicita)}` : ""}</p>
               <p><b>📅 Fecha:</b> ${esc(r.fechaInicio)} (${esc(infoHor.nombreDia)}) al ${esc(r.fechaTermino || r.fechaInicio)} · <b>🕒 Horario:</b> ${esc(r.horaInicio)}–${esc(r.horaTermino)}</p>
               ${recCliBadge}
               <div class="log-internal-box ${boxClass}" title="Información confidencial exclusiva de Logística (no visible para trabajador ni cliente)">
@@ -1814,13 +1839,19 @@ async function cargar() {
                     <input id="editTrab-${idx}" list="trabajadoresList" value="${esc(r.trabajador || "")}">
                   </div>
                   <div>
+                    <label>🔢 N° de Aviso Cliente</label>
+                    <input id="editAviso-${idx}" placeholder="Ej: 10458920" value="${esc(r.numeroAviso || "")}">
+                  </div>
+                </div>
+                <div class="row" style="margin-top:8px">
+                  <div>
                     <label>Solicita (Mandante / Supervisor Cliente)</label>
                     <input id="editSol-${idx}" placeholder="Ej: MARCELO YAÑEZ" value="${esc(r.solicita || "")}">
                   </div>
-                </div>
-                <div style="margin-top:8px">
-                  <label>Integrantes adicionales de la cuadrilla (separados por coma)</label>
-                  <input id="editInt-${idx}" list="trabajadoresList" placeholder="Ej: BECERRA FLORES MATIAS ANDRES, CENTENO JUAN CARLOS" value="${esc(Array.isArray(r.integrantes) ? r.integrantes.join(", ") : "")}">
+                  <div>
+                    <label>Integrantes adicionales (separados por coma)</label>
+                    <input id="editInt-${idx}" list="trabajadoresList" placeholder="Ej: BECERRA FLORES MATIAS ANDRES" value="${esc(Array.isArray(r.integrantes) ? r.integrantes.join(", ") : "")}">
+                  </div>
                 </div>
                 <div style="margin-top:8px">
                   <label>Trabajo realizado</label>
@@ -1868,6 +1899,7 @@ async function guardarEdicion(id, idx) {
   const personas = $("editPers-" + idx) ? $("editPers-" + idx).value : "1";
   const tipoHorario = $("editTipoHor-" + idx) ? $("editTipoHor-" + idx).value : "Normal";
   const trabajador = $("editTrab-" + idx).value.trim();
+  const numeroAviso = $("editAviso-" + idx) ? $("editAviso-" + idx).value.trim() : "";
   const solicita = $("editSol-" + idx).value.trim();
   const integrantes = ($("editInt-" + idx) ? $("editInt-" + idx).value : "")
     .split(",")
@@ -1902,6 +1934,7 @@ async function guardarEdicion(id, idx) {
         tipoHorario,
         trabajador,
         integrantes,
+        numeroAviso,
         solicita,
         trabajo,
         materiales,
@@ -2301,6 +2334,7 @@ function renderizarDatosEnVistaCliente(r, mostrarGuiaMuestra = false) {
   $("cliFotos").innerHTML = fotos.map(f => `<a href="${esc(f.url)}" target="_blank"><img src="${esc(f.url)}"></a>`).join("");
 
   const rec = r.recepcionCliente || null;
+  if ($("cliRecAviso")) $("cliRecAviso").value = r.numeroAviso || (rec && rec.numeroAviso) || "";
   $("cliRecNombre").value = (rec && rec.nombre) || r.solicita || "";
   $("cliRecCargo").value = (rec && rec.cargo) || "";
   $("cliRecEstado").value = (rec && rec.estado) || "Recibido Conforme";
@@ -2314,6 +2348,7 @@ function renderizarDatosEnVistaCliente(r, mostrarGuiaMuestra = false) {
     $("cliYaFirmadoBox").innerHTML =
       `<strong>✓ Este trabajo ya cuenta con recepción registrada:</strong> ${esc(rec.estado)} por <b>${esc(rec.nombre)}</b>` +
       (rec.cargo ? ` (${esc(rec.cargo)})` : "") +
+      (r.numeroAviso ? ` · <b>N° Aviso: ${esc(r.numeroAviso)}</b>` : "") +
       (rec.observacion ? `<br>Observación: <i>"${esc(rec.observacion)}"</i>` : "");
   } else {
     $("cliYaFirmadoBox").classList.add("hidden");
@@ -2331,6 +2366,7 @@ function abrirMuestraRecepcionCliente() {
   const muestra = {
     id: "RT-MUESTRA",
     lugar: lugarAct,
+    numeroAviso: ($("numeroAviso") && $("numeroAviso").value.trim()) || "10458923",
     estado: $("estado").value || "Terminado",
     fechaInicio: $("fi").value || new Date().toISOString().slice(0, 10),
     fechaTermino: $("ft").value || new Date().toISOString().slice(0, 10),
@@ -2384,6 +2420,7 @@ async function guardarFirmaClienteRemota() {
   const estado = $("cliRecEstado").value;
   const cargo = $("cliRecCargo").value.trim();
   const observacion = $("cliRecObs").value.trim();
+  const numeroAviso = ($("cliRecAviso") && $("cliRecAviso").value.trim()) || "";
 
   if (esMuestraCliente || folioClienteActual === "RT-MUESTRA") {
     const st = $("cliRecStatus");
@@ -2391,7 +2428,7 @@ async function guardarFirmaClienteRemota() {
     st.classList.remove("hidden");
     st.innerHTML =
       `<strong>✓ ¡Muestra de Recepción Confirmada!</strong><br>` +
-      `En un reporte real, esta firma de <b>${esc(nombre)}</b> (${esc(estado)}) queda guardada en el Folio, envía aviso automático al correo de Logística y se estampa en el PDF oficial.`;
+      `En un reporte real, esta firma de <b>${esc(nombre)}</b> (${esc(estado)})${numeroAviso ? ` con <b>N° Aviso ${esc(numeroAviso)}</b>` : ""} queda guardada en el Folio, envía aviso automático al correo de Logística y se estampa en el PDF oficial.`;
     return;
   }
 
@@ -2408,6 +2445,7 @@ async function guardarFirmaClienteRemota() {
         cargo,
         estado,
         observacion,
+        numeroAviso,
         firmaDataUrl,
         modalidad: "Link Cliente"
       })
@@ -2556,6 +2594,7 @@ function imprimirFicha(idx) {
   </div>
   <div class="folio">
     <b>FOLIO ${esc(r.id)}</b>
+    ${r.numeroAviso ? `<span style="display:inline-block;margin:2px 0;padding:2px 8px;background:#fef3c7;border:1px solid #f59e0b;border-radius:4px;font-weight:800;color:#92400e">N° AVISO: ${esc(r.numeroAviso)}</span><br>` : ""}
     Estado: ${esc(r.estado)}<br>
     Recibido: ${esc((r.createdAt || "").slice(0, 19).replace("T", " "))}
   </div>
@@ -2563,7 +2602,7 @@ function imprimirFicha(idx) {
 <table class="meta">
   <tr>
     <th>Cliente</th><td><b>AGRICOLA SUPER LTDA</b></td>
-    <th>Solicita</th><td>${esc(r.solicita || "—")}</td>
+    <th>N° Aviso / Solicita</th><td>${r.numeroAviso ? `<b>Aviso N° ${esc(r.numeroAviso)}</b> · ` : ""}${esc(r.solicita || "—")}</td>
   </tr>
   <tr>
     <th>Lugar / Plantel</th><td><b>${esc(r.lugar)}</b></td>
@@ -2743,7 +2782,7 @@ function construirHojaCotizacionMYC(r) {
     [null, { v: "Giro: Terminación y acabado de Edificios", s: 3 }, { v: `Ejecutado en terreno por: ${r.trabajador || "No indicado"} (${hrs} hrs / ${pers} pers.)`, s: 3 }, null, null, null, null],
     [],
     [null, { v: "COTIZACION N°", s: 6 }, { v: r.id || "", s: 3 }, null, { v: "ESTADO REPORTE:", s: 6 }, { v: r.estado || "", s: 3 }, null],
-    [null, { v: "CLIENTE:", s: 6 }, { v: "AGRICOLA SUPER LTDA", s: 3 }, null, null, null, null],
+    [null, { v: "CLIENTE:", s: 6 }, { v: "AGRICOLA SUPER LTDA", s: 3 }, null, { v: "N° AVISO CLIENTE:", s: 6 }, { v: r.numeroAviso || "—", s: 3 }, null],
     [null, { v: "LUGAR:", s: 6 }, { v: (r.lugar || "").toUpperCase(), s: 3 }, null, null, null, null],
     [null, { v: "FECHA:", s: 6 }, { v: r.fechaInicio || "", s: 3 }, null, { v: "HORARIO:", s: 6 }, { v: `${r.horaInicio || ""} a ${r.horaTermino || ""}`, s: 3 }, null],
     [null, { v: "SOLICITA:", s: 6 }, { v: (r.solicita || "").toUpperCase(), s: 3 }, null, null, null, null],
@@ -2994,6 +3033,7 @@ function generarDescargaXlsx(reportes, nombreArchivo) {
       [],
       [
         { v: "Folio", s: 1 },
+        { v: "N° Aviso Cliente", s: 1 },
         { v: "Fecha Inicio", s: 1 },
         { v: "Día", s: 1 },
         { v: "Fecha Término", s: 1 },
@@ -3022,6 +3062,7 @@ function generarDescargaXlsx(reportes, nombreArchivo) {
       const maq = (r.maquinaria || []).map(m => `${m.cantidad} ${m.unidad} ${m.descripcion}`).join(" | ");
       resRows.push([
         { v: r.id || "", s: 6 },
+        { v: r.numeroAviso || "—", s: 3 },
         { v: r.fechaInicio || "", s: 3 },
         { v: infoHor.nombreDia || "", s: 3 },
         { v: r.fechaTermino || r.fechaInicio || "", s: 3 },
@@ -3045,7 +3086,7 @@ function generarDescargaXlsx(reportes, nombreArchivo) {
 
     sheets.push({
       name: "Resumen General",
-      xml: buildSheetXml(resRows, [11, 13, 12, 13, 15, 9, 18, 28, 30, 42, 24, 22, 18, 10, 13, 40, 30, 30, 8])
+      xml: buildSheetXml(resRows, [11, 16, 13, 12, 13, 15, 9, 18, 28, 30, 42, 24, 22, 18, 10, 13, 40, 30, 30, 8])
     });
   }
 

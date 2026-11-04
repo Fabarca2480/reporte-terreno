@@ -351,6 +351,10 @@ function enviarNotificacionesNuevoReporte(array $r, string $notifyConfigFile, ar
 
     $folio = htmlspecialchars((string)($r['id'] ?? ''), ENT_QUOTES, 'UTF-8');
     $lugar = htmlspecialchars((string)($r['lugar'] ?? ''), ENT_QUOTES, 'UTF-8');
+    $numAviso = htmlspecialchars(trim((string)($r['numeroAviso'] ?? '')), ENT_QUOTES, 'UTF-8');
+    $numAvisoRow = $numAviso !== ''
+        ? "<tr><td style='padding:7px 10px;border:1px solid #e2e8f0;background:#f8fafc'><strong>N° de Aviso Cliente</strong></td><td style='padding:7px 10px;border:1px solid #e2e8f0'>🔢 <strong>{$numAviso}</strong></td></tr>"
+        : '';
     $trabajador = htmlspecialchars((string)($r['trabajador'] ?? 'No indicado'), ENT_QUOTES, 'UTF-8');
     $integrantesArr = isset($r['integrantes']) && is_array($r['integrantes']) ? array_values(array_filter(array_map('trim', $r['integrantes']))) : [];
     $integrantesHtml = $integrantesArr
@@ -413,6 +417,7 @@ function enviarNotificacionesNuevoReporte(array $r, string $notifyConfigFile, ar
         {$recCliHtml}
         <table style='width:100%;border-collapse:collapse;font-size:13.5px;margin-bottom:14px'>
           <tr><td style='padding:7px 10px;border:1px solid #e2e8f0;background:#f8fafc;width:32%'><strong>Lugar / Plantel</strong></td><td style='padding:7px 10px;border:1px solid #e2e8f0'><strong>{$lugar}</strong></td></tr>
+          {$numAvisoRow}
           <tr><td style='padding:7px 10px;border:1px solid #e2e8f0;background:#f8fafc'><strong>Generado por / Cuadrilla</strong></td><td style='padding:7px 10px;border:1px solid #e2e8f0'>👷 {$trabajador} ({$personas} pers. en cuadrilla){$integrantesHtml}</td></tr>
           <tr><td style='padding:7px 10px;border:1px solid #e2e8f0;background:#f8fafc'><strong>Fecha y Día</strong></td><td style='padding:7px 10px;border:1px solid #e2e8f0'>{$fechaIni} (" . htmlspecialchars($infoHor['nombreDia'], ENT_QUOTES, 'UTF-8') . ") al {$fechaTer}</td></tr>
           <tr><td style='padding:7px 10px;border:1px solid #e2e8f0;background:#f8fafc'><strong>Horario</strong></td><td style='padding:7px 10px;border:1px solid #e2e8f0'>{$horario}</td></tr>
@@ -648,6 +653,7 @@ if ($method === 'GET' && $action === 'client_view') {
             $safeReport = [
                 'id' => $r['id'] ?? '',
                 'lugar' => $r['lugar'] ?? '',
+                'numeroAviso' => $r['numeroAviso'] ?? '',
                 'solicita' => $r['solicita'] ?? '',
                 'trabajador' => $r['trabajador'] ?? '',
                 'integrantes' => $r['integrantes'] ?? [],
@@ -699,6 +705,9 @@ if ($method === 'POST' && $action === 'client_sign') {
                 'modalidad' => trim((string)($input['modalidad'] ?? 'Link Cliente')),
                 'fechaFirma' => gmdate('Y-m-d\TH:i:s.v\Z')
             ];
+            if (!empty($input['numeroAviso'])) {
+                $r['numeroAviso'] = trim((string)$input['numeroAviso']);
+            }
             if (empty($r['solicita'])) {
                 $r['solicita'] = $nombre;
             }
@@ -862,6 +871,9 @@ if ($method === 'POST' && $action === 'update') {
             if (isset($input['solicita'])) {
                 $r['solicita'] = trim((string)$input['solicita']);
             }
+            if (isset($input['numeroAviso'])) {
+                $r['numeroAviso'] = trim((string)$input['numeroAviso']);
+            }
             if (isset($input['lugar']) && trim((string)$input['lugar']) !== '') {
                 $r['lugar'] = trim((string)$input['lugar']);
             }
@@ -977,6 +989,7 @@ if ($method === 'POST' && $action === 'unify') {
     $integrantesSet = [];
     $recepcionConsolidada = null;
     $solicitaVal = '';
+    $avisosSet = [];
     $fechaMin = $first['fechaInicio'] ?? date('Y-m-d');
     $fechaMax = $first['fechaTermino'] ?? $fechaMin;
     $personasMax = 0;
@@ -1051,6 +1064,10 @@ if ($method === 'POST' && $action === 'unify') {
         if ($solicitaVal === '' && !empty($item['solicita'])) {
             $solicitaVal = trim((string)$item['solicita']);
         }
+        $avItem = trim((string)($item['numeroAviso'] ?? ''));
+        if ($avItem !== '' && !in_array($avItem, $avisosSet, true)) {
+            $avisosSet[] = $avItem;
+        }
         $fi = $item['fechaInicio'] ?? $fechaMin;
         $ft = $item['fechaTermino'] ?? $fi;
         if ($fi < $fechaMin) $fechaMin = $fi;
@@ -1101,6 +1118,7 @@ if ($method === 'POST' && $action === 'unify') {
         'integrantes' => $integrantesSet,
         'recepcionCliente' => $recepcionConsolidada,
         'solicita' => $solicitaVal,
+        'numeroAviso' => implode(' / ', $avisosSet),
         'lugar' => $lugarFinal,
         'fechaInicio' => $fechaMin,
         'fechaTermino' => $fechaMax,
@@ -1235,6 +1253,7 @@ if ($method === 'GET') {
             $integrantesStr = isset($r['integrantes']) && is_array($r['integrantes']) ? implode(' ', $r['integrantes']) : '';
             $haystack = mb_strtolower(
                 ($r['id'] ?? '') . ' ' .
+                ($r['numeroAviso'] ?? '') . ' ' .
                 ($r['lugar'] ?? '') . ' ' .
                 ($r['trabajo'] ?? '') . ' ' .
                 ($r['trabajador'] ?? '') . ' ' .
@@ -1324,6 +1343,7 @@ if ($method === 'POST') {
     $r['id'] = sprintf('RT-%04d', $nextNum);
     $r['clientUid'] = $clientUid ?: ('UID-' . round(microtime(true) * 1000));
     $r['trabajador'] = trim((string)$r['trabajador']);
+    $r['numeroAviso'] = trim((string)($r['numeroAviso'] ?? ''));
     $r['integrantes'] = isset($r['integrantes']) && is_array($r['integrantes'])
         ? array_values(array_unique(array_filter(array_map('trim', $r['integrantes']))))
         : [];
