@@ -692,7 +692,8 @@ if ($method === 'POST' && $action === 'client_sign') {
     $foundReport = null;
     foreach ($reports as &$r) {
         if (($r['id'] ?? '') === $id) {
-            $r['recepcionCliente'] = [
+            $prevRec = is_array($r['recepcionCliente'] ?? null) ? $r['recepcionCliente'] : [];
+            $r['recepcionCliente'] = array_merge($prevRec, [
                 'requerido' => true,
                 'firmado' => true,
                 'estado' => in_array(trim((string)($input['estado'] ?? '')), ['Recibido Conforme', 'Recibido con Observaciones'], true)
@@ -704,7 +705,7 @@ if ($method === 'POST' && $action === 'client_sign') {
                 'firmaDataUrl' => trim((string)($input['firmaDataUrl'] ?? '')),
                 'modalidad' => trim((string)($input['modalidad'] ?? 'Link Cliente')),
                 'fechaFirma' => gmdate('Y-m-d\TH:i:s.v\Z')
-            ];
+            ]);
             if (!empty($input['numeroAviso'])) {
                 $r['numeroAviso'] = trim((string)$input['numeroAviso']);
             }
@@ -727,6 +728,139 @@ if ($method === 'POST' && $action === 'client_sign') {
         enviarNotificacionesNuevoReporte($foundReport, $notifyConfigFile, $defaultNotifyConfig);
     } catch (\Throwable $e) {}
     echo json_encode(['ok' => true, 'recepcionCliente' => $foundReport['recepcionCliente']], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if ($method === 'POST' && $action === 'send_client_approval_request') {
+    checkAdminPin();
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    $id = trim((string)($input['id'] ?? ''));
+    $canal = trim((string)($input['canal'] ?? 'email'));
+    $clientName = trim((string)($input['clientName'] ?? ''));
+    $clientEmail = strtolower(trim((string)($input['clientEmail'] ?? '')));
+    $clientPhone = trim((string)($input['clientPhone'] ?? ''));
+    $nota = trim((string)($input['nota'] ?? ''));
+
+    if ($id === '') {
+        http_response_code(400);
+        echo json_encode(['error' => 'Folio requerido']);
+        exit;
+    }
+    if ($canal === 'email' && ($clientEmail === '' || !filter_var($clientEmail, FILTER_VALIDATE_EMAIL))) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Ingrese un correo electrónico válido del cliente']);
+        exit;
+    }
+
+    $reports = readReports($dbFile);
+    [$reports, ] = ensureShortFolios($dbFile, $reports);
+    $targetReport = null;
+
+    foreach ($reports as &$r) {
+        if (($r['id'] ?? '') === $id) {
+            $prevRec = is_array($r['recepcionCliente'] ?? null) ? $r['recepcionCliente'] : [];
+            $r['recepcionCliente'] = array_merge($prevRec, [
+                'requerido' => true,
+                'firmado' => !empty($prevRec['firmado']),
+                'solicitudEnviada' => true,
+                'destinatarioNombre' => $clientName !== '' ? $clientName : ($prevRec['destinatarioNombre'] ?? ($r['solicita'] ?? '')),
+                'destinatarioEmail' => $clientEmail !== '' ? $clientEmail : ($prevRec['destinatarioEmail'] ?? ''),
+                'destinatarioTelefono' => $clientPhone !== '' ? $clientPhone : ($prevRec['destinatarioTelefono'] ?? ''),
+                'canalEnvio' => $canal,
+                'notaSolicitud' => $nota,
+                'fechaSolicitud' => gmdate('Y-m-d\TH:i:s.v\Z')
+            ]);
+            if ($clientName !== '' && empty($r['solicita'])) {
+                $r['solicita'] = $clientName;
+            }
+            $r['updatedAt'] = gmdate('Y-m-d\TH:i:s.v\Z');
+            $targetReport = $r;
+            break;
+        }
+    }
+    unset($r);
+
+    if (!$targetReport) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Reporte no encontrado']);
+        exit;
+    }
+
+    writeReports($dbFile, $reports);
+
+    $mailSent = false;
+    if ($canal === 'email' && $clientEmail !== '') {
+        $folio = htmlspecialchars((string)($targetReport['id'] ?? ''), ENT_QUOTES, 'UTF-8');
+        $lugar = htmlspecialchars((string)($targetReport['lugar'] ?? ''), ENT_QUOTES, 'UTF-8');
+        $aviso = htmlspecialchars((string)($targetReport['numeroAviso'] ?? ''), ENT_QUOTES, 'UTF-8');
+        $fechaStr = htmlspecialchars(($targetReport['fechaInicio'] ?? '') . ' (' . ($targetReport['horaInicio'] ?? '') . ' a ' . ($targetReport['horaTermino'] ?? '') . ' hrs)', ENT_QUOTES, 'UTF-8');
+        $integArr = isset($targetReport['integrantes']) && is_array($targetReport['integrantes']) ? $targetReport['integrantes'] : [];
+        $cuadrillaStr = htmlspecialchars(($targetReport['trabajador'] ?? '') . (count($integArr) ? ' + ' . implode(', ', $integArr) : '') . ' (' . ($targetReport['personas'] ?? '1') . ' pers.)', ENT_QUOTES, 'UTF-8');
+        $trabajoHtml = nl2br(htmlspecialchars((string)($targetReport['trabajo'] ?? ''), ENT_QUOTES, 'UTF-8'));
+        $saludo = $clientName !== '' ? "Estimado(a) <strong>" . htmlspecialchars($clientName, ENT_QUOTES, 'UTF-8') . "</strong>," : "Estimado(a) Cliente,";
+        $notaHtml = $nota !== ''
+            ? "<div style='background:#f0fdf4;border-left:4px solid #0f766e;padding:10px 12px;margin:12px 0;font-size:13.5px;color:#134e4a'><strong>Nota de MYC SpA:</strong> " . nl2br(htmlspecialchars($nota, ENT_QUOTES, 'UTF-8')) . "</div>"
+            : "";
+
+        $matItems = '';
+        foreach (($targetReport['materiales'] ?? []) as $m) {
+            $matItems .= "• " . htmlspecialchars(($m['cantidad'] ?? '') . ' ' . ($m['unidad'] ?? '') . ' ' . ($m['descripcion'] ?? ''), ENT_QUOTES, 'UTF-8') . "<br>";
+        }
+        if ($matItems === '') $matItems = "<span style='color:#64748b'>Sin materiales adicionales registrados</span>";
+
+        $maqItems = '';
+        foreach (($targetReport['maquinaria'] ?? []) as $m) {
+            $maqItems .= "• " . htmlspecialchars(($m['cantidad'] ?? '') . ' ' . ($m['unidad'] ?? '') . ' ' . ($m['descripcion'] ?? ''), ENT_QUOTES, 'UTF-8') . "<br>";
+        }
+        if ($maqItems === '') $maqItems = "<span style='color:#64748b'>Sin maquinaria registrada</span>";
+
+        $linkRecepcion = 'https://reporte.mycmantencion.cl/?recepcion=' . rawurlencode((string)($targetReport['id'] ?? ''));
+        $avisoRow = $aviso !== '' ? "<tr><td style='padding:7px 10px;border:1px solid #cbd5e1;background:#f8fafc;font-weight:bold'>N° de Aviso Cliente</td><td style='padding:7px 10px;border:1px solid #cbd5e1'><strong>{$aviso}</strong></td></tr>" : "";
+
+        $htmlClient = "<!doctype html><html lang='es'><head><meta charset='utf-8'></head><body style='font-family:Segoe UI,Arial,sans-serif;background:#f1f5f9;margin:0;padding:20px;color:#1f2937'>
+        <div style='max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #cbd5e1'>
+          <div style='background:#0f766e;color:#ffffff;padding:18px 22px'>
+            <div style='font-size:12px;opacity:.9;text-transform:uppercase;letter-spacing:.5px'>Inversiones y Mantenimiento MYC SpA · RUT 77.547.271-5</div>
+            <h2 style='margin:4px 0 0;font-size:19px'>✍️ Solicitud de Recepción Conforme de Trabajo — {$folio}</h2>
+          </div>
+          <div style='padding:20px 22px'>
+            <p style='margin:0 0 10px;font-size:14px;line-height:1.5'>{$saludo}</p>
+            <p style='margin:0 0 14px;font-size:13.5px;line-height:1.5;color:#334155'>Junto con saludar, enviamos el resumen del trabajo ejecutado en terreno en <strong>{$lugar}</strong> para su revisión y aprobación digital (Recepción Conforme):</p>
+            {$notaHtml}
+            <table style='width:100%;border-collapse:collapse;font-size:13.5px;margin-bottom:14px'>
+              <tr><td style='padding:7px 10px;border:1px solid #cbd5e1;background:#f8fafc;width:34%;font-weight:bold'>Folio Trabajo</td><td style='padding:7px 10px;border:1px solid #cbd5e1'><strong>{$folio}</strong></td></tr>
+              {$avisoRow}
+              <tr><td style='padding:7px 10px;border:1px solid #cbd5e1;background:#f8fafc;font-weight:bold'>Lugar / Plantel</td><td style='padding:7px 10px;border:1px solid #cbd5e1'><strong>{$lugar}</strong></td></tr>
+              <tr><td style='padding:7px 10px;border:1px solid #cbd5e1;background:#f8fafc;font-weight:bold'>Fecha y Horario</td><td style='padding:7px 10px;border:1px solid #cbd5e1'>{$fechaStr}</td></tr>
+              <tr><td style='padding:7px 10px;border:1px solid #cbd5e1;background:#f8fafc;font-weight:bold'>Cuadrilla MYC SpA</td><td style='padding:7px 10px;border:1px solid #cbd5e1'>{$cuadrillaStr}</td></tr>
+            </table>
+            <div style='background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:12px;margin-bottom:12px'>
+              <strong style='color:#17324d;font-size:13px;display:block;margin-bottom:4px'>🛠️ Descripción del Trabajo Realizado:</strong>
+              <div style='font-size:13.5px;line-height:1.45'>{$trabajoHtml}</div>
+            </div>
+            <div style='margin-bottom:10px;font-size:13px'><strong style='color:#17324d'>📦 Materiales:</strong><br>{$matItems}</div>
+            <div style='margin-bottom:18px;font-size:13px'><strong style='color:#17324d'>🚜 Maquinaria / Equipos:</strong><br>{$maqItems}</div>
+            <div style='text-align:center;margin:22px 0 14px'>
+              <a href='{$linkRecepcion}' style='background:#059669;color:#ffffff;text-decoration:none;padding:13px 24px;border-radius:8px;font-weight:bold;font-size:14.5px;display:inline-block'>✍️ REVISAR Y FIRMAR RECEPCIÓN DEL TRABAJO</a>
+            </div>
+            <p style='margin:0;font-size:12px;color:#64748b;text-align:center'>También puede abrir directamente este enlace en su celular o computador:<br><a href='{$linkRecepcion}' style='color:#0f766e'>{$linkRecepcion}</a></p>
+          </div>
+        </div></body></html>";
+
+        $subj = "Solicitud de Recepción de Trabajo {$targetReport['id']} - {$targetReport['lugar']} | MYC SpA";
+        $encodedSubj = '=?UTF-8?B?' . base64_encode($subj) . '?=';
+        $headers = "MIME-Version: 1.0\r\n"
+            . "Content-Type: text/html; charset=UTF-8\r\n"
+            . "From: Inversiones y Mantenimiento MYC SpA <notificaciones@mycmantencion.cl>\r\n"
+            . "Reply-To: c.huerta@mycmantencion.cl, f.abarca@mycmantencion.cl\r\n";
+        $mailSent = @mail($clientEmail, $encodedSubj, $htmlClient, $headers);
+    }
+
+    echo json_encode([
+        'ok' => true,
+        'mailSent' => $mailSent,
+        'recepcionCliente' => $targetReport['recepcionCliente']
+    ], JSON_UNESCAPED_UNICODE);
     exit;
 }
 

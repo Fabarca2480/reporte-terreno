@@ -512,15 +512,24 @@ footer a:hover{opacity:1}
             </select>
           </div>
           <div>
-            <label>🔒 Control Horario / Pago (Solo Logística)</label>
-            <select id="filtroHorario" onchange="cargar()">
-              <option value="">Todos los horarios</option>
-              <option value="MARCADOR">🚩 Con Marcador (>17:30 / Sáb-Dom-Festivo / Recargo)</option>
-              <option value="EMERGENCIA">🚨 Solo Pago Emergencia</option>
-              <option value="HORA_EXTRA">⏰ Solo Pago Hora Extra</option>
-              <option value="NORMAL">✅ Solo Horario Habitual</option>
+            <label>✍️ Aprobación / Recepción Cliente</label>
+            <select id="filtroRecepcion" onchange="cargar()">
+              <option value="">Todos (Con y sin aprobación)</option>
+              <option value="SIN_FIRMA">⏳ Sin Aprobación del Cliente (Pendientes de firma)</option>
+              <option value="SOLICITADA">📤 Solicitud Enviada (Esperando firma del cliente)</option>
+              <option value="FIRMADA">✅ Aprobados / Firmados por el Cliente</option>
             </select>
           </div>
+        </div>
+        <div style="margin-top:10px">
+          <label>🔒 Control Horario / Pago (Solo Logística)</label>
+          <select id="filtroHorario" onchange="cargar()">
+            <option value="">Todos los horarios</option>
+            <option value="MARCADOR">🚩 Con Marcador (>17:30 / Sáb-Dom-Festivo / Recargo)</option>
+            <option value="EMERGENCIA">🚨 Solo Pago Emergencia</option>
+            <option value="HORA_EXTRA">⏰ Solo Pago Hora Extra</option>
+            <option value="NORMAL">✅ Solo Horario Habitual</option>
+          </select>
         </div>
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
           <button class="primary" style="flex:1;min-width:180px" onclick="cargar()">🔄 ACTUALIZAR LISTA</button>
@@ -1093,7 +1102,7 @@ function toggleRecepcionTerreno() {
 async function init() {
   $("hdrLogo").src = LOGO_MYC;
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js?v=15").then(reg => {
+    navigator.serviceWorker.register("sw.js?v=16").then(reg => {
       try { reg.update(); } catch (e) {}
     }).catch(() => {});
   }
@@ -1686,15 +1695,25 @@ async function cargar() {
     });
     primerCargaCompleta = true;
 
-    // Filtro interno de horario (exclusivo de Logística)
+    // Filtro interno de horario y aprobación de cliente (exclusivos de Logística)
     const filtroHor = $("filtroHorario") ? $("filtroHorario").value : "";
+    const filtroRec = $("filtroRecepcion") ? $("filtroRecepcion").value : "";
     ultimosReportesCargados = todosRecibidos.filter(r => {
-      if (!filtroHor) return true;
-      const info = analizarHorarioLogistica(r);
-      if (filtroHor === "MARCADOR") return info.tieneMarcador;
-      if (filtroHor === "EMERGENCIA") return info.categoria === "EMERGENCIA";
-      if (filtroHor === "HORA_EXTRA") return info.categoria === "HORA_EXTRA";
-      if (filtroHor === "NORMAL") return info.categoria === "NORMAL";
+      if (filtroHor) {
+        const info = analizarHorarioLogistica(r);
+        if (filtroHor === "MARCADOR" && !info.tieneMarcador) return false;
+        if (filtroHor === "EMERGENCIA" && info.categoria !== "EMERGENCIA") return false;
+        if (filtroHor === "HORA_EXTRA" && info.categoria !== "HORA_EXTRA") return false;
+        if (filtroHor === "NORMAL" && info.categoria !== "NORMAL") return false;
+      }
+      if (filtroRec) {
+        const rec = r.recepcionCliente || null;
+        const firmada = Boolean(rec && rec.firmado);
+        const solicitada = Boolean(rec && rec.solicitudEnviada && !firmada);
+        if (filtroRec === "SIN_FIRMA" && firmada) return false;
+        if (filtroRec === "SOLICITADA" && !solicitada) return false;
+        if (filtroRec === "FIRMADA" && !firmada) return false;
+      }
       return true;
     });
 
@@ -1746,12 +1765,22 @@ async function cargar() {
             const integrantesTxt = Array.isArray(r.integrantes) && r.integrantes.length
               ? ` · <b>👥 Integrantes:</b> ${esc(r.integrantes.join(", "))}`
               : "";
-            const recCli = r.recepcionCliente && (r.recepcionCliente.firmado || r.recepcionCliente.nombre)
-              ? r.recepcionCliente
-              : null;
-            const recCliBadge = recCli
-              ? `<div style="margin:6px 0"><span class="client-rec-badge">✍️ ${esc(recCli.estado || "Recibido Conforme")}: ${esc(recCli.nombre)}${recCli.cargo ? " (" + esc(recCli.cargo) + ")" : ""}${recCli.observacion ? " — \"" + esc(recCli.observacion) + "\"" : ""}</span></div>`
-              : "";
+            const recObj = r.recepcionCliente || null;
+            const recFirmada = Boolean(recObj && recObj.firmado);
+            const recSolicitada = Boolean(recObj && recObj.solicitudEnviada && !recFirmada);
+            const linkDirectoCliente = `${window.location.origin}${window.location.pathname}?recepcion=${encodeURIComponent(r.id)}`;
+
+            let recCliBadge = "";
+            if (recFirmada) {
+              recCliBadge = `<div style="margin:6px 0"><span class="client-rec-badge">✅ ${esc(recObj.estado || "Recibido Conforme")}: ${esc(recObj.nombre || "Cliente")}${recObj.cargo ? " (" + esc(recObj.cargo) + ")" : ""}${recObj.observacion ? " — \"" + esc(recObj.observacion) + "\"" : ""}</span></div>`;
+            } else if (recSolicitada) {
+              const destTxt = recObj.destinatarioNombre || recObj.destinatarioEmail || recObj.destinatarioTelefono || "Cliente";
+              const canalTxt = recObj.canalEnvio === "email" ? "por Correo" : (recObj.canalEnvio === "whatsapp" ? "por WhatsApp" : "por Link");
+              const fechaSolTxt = (recObj.fechaSolicitud || "").slice(0, 16).replace("T", " ");
+              recCliBadge = `<div style="margin:6px 0"><span class="client-rec-badge" style="background:#eff6ff;color:#1e40af;border-color:#93c5fd">📤 Solicitud de Aprobación enviada ${esc(canalTxt)} a <b>${esc(destTxt)}</b> (${esc(fechaSolTxt)}) — Esperando firma del cliente</span></div>`;
+            } else {
+              recCliBadge = `<div style="margin:6px 0"><span class="client-rec-badge" style="background:#fffbeb;color:#92400e;border-color:#fde68a">⏳ Sin aprobación del cliente en terreno — Puedes solicitarla desde aquí por Correo o WhatsApp</span></div>`;
+            }
 
             return `<div class="report" id="rep-${idx}">
               <h3>
@@ -1786,11 +1815,52 @@ async function cargar() {
               <div class="report-actions">
                 <button type="button" class="secondary btn-sm" onclick="imprimirFicha(${idx})">📄 Ficha PDF</button>
                 <button type="button" class="success btn-sm" onclick="exportarExcelIndividual(${idx})">📊 Excel Cotización MYC</button>
-                <button type="button" class="secondary btn-sm" style="background:#ecfdf5;color:#065f46;border:1px solid #6ee7b7" onclick="gestionarRecepcionCliente(${idx})">✍️ Recepción Cliente</button>
+                <button type="button" class="secondary btn-sm" style="background:${recFirmada ? "#ecfdf5" : "#fef3c7"};color:${recFirmada ? "#065f46" : "#92400e"};border:1px solid ${recFirmada ? "#6ee7b7" : "#f59e0b"}" onclick="gestionarRecepcionCliente(${idx})">
+                  ${recFirmada ? "✅ Ver Recepción Cliente" : "✍️ Solicitar Aprobación Cliente"}
+                </button>
                 <button type="button" class="secondary btn-sm" onclick="enviarWhatsAppManual(${idx})">💬 Enviar a WhatsApp</button>
                 <button type="button" class="secondary btn-sm" onclick="mostrarEdicion(${idx})">✏️ Editar Completo</button>
                 ${r.esUnificado ? `<button type="button" class="secondary btn-sm" style="background:#e0e7ff;color:#3730a3" onclick="separarReporteUnificado('${esc(r.id)}')">↩️ Separar Originales</button>` : ""}
                 <button type="button" class="danger btn-sm" onclick="eliminarReporte('${esc(r.id)}')">🗑️ Eliminar</button>
+              </div>
+              <div id="clientApprovalBox-${idx}" class="edit-box hidden" style="border:2px solid #0f766e;background:#f0fdf4">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+                  <div style="font-weight:800;color:#0f766e;font-size:14px">✍️ Solicitar y Conseguir Aprobación del Cliente — Folio ${esc(r.id)} (${esc(r.lugar)})</div>
+                  <button type="button" class="secondary btn-sm" onclick="gestionarRecepcionCliente(${idx})">Cerrar</button>
+                </div>
+                <div class="muted" style="color:#134e4a;margin-bottom:10px;font-size:12.5px">
+                  Cuando los trabajadores no pudieron conseguir la firma en terreno, desde aquí puedes enviarle al cliente un enlace limpio (sin marcadores internos de horario) para que apruebe, firme e ingrese el <b>N° de Aviso</b> desde su celular o computador:
+                </div>
+                <div class="row">
+                  <div>
+                    <label>👤 Nombre del Supervisor / Jefe de Plantel (Cliente)</label>
+                    <input id="reqCliNombre-${idx}" placeholder="Ej: Marcelo Yáñez" value="${esc((recObj && (recObj.destinatarioNombre || recObj.nombre)) || r.solicita || "")}">
+                  </div>
+                  <div>
+                    <label>📧 Correo Electrónico del Cliente <span class="muted">(para envío directo)</span></label>
+                    <input id="reqCliEmail-${idx}" type="email" placeholder="Ej: supervisor@agrosuper.com" value="${esc((recObj && recObj.destinatarioEmail) || "")}">
+                  </div>
+                </div>
+                <div class="row" style="margin-top:8px">
+                  <div>
+                    <label>📱 WhatsApp del Cliente <span class="muted">(opcional, ej: +569...)</span></label>
+                    <input id="reqCliPhone-${idx}" placeholder="Ej: +56912345678 (o déjalo vacío para elegir contacto)" value="${esc((recObj && recObj.destinatarioTelefono) || "")}">
+                  </div>
+                  <div>
+                    <label>📝 Nota adicional en el mensaje <span class="muted">(opcional)</span></label>
+                    <input id="reqCliNota-${idx}" placeholder="Ej: Adjuntamos reporte para su recepción y N° de aviso" value="${esc((recObj && recObj.notaSolicitud) || "")}">
+                  </div>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+                  <button type="button" class="primary btn-sm" style="width:auto;background:#0f766e" onclick="enviarSolicitudAprobacionCorreo(${idx})">📧 1. Enviar Solicitud por Correo al Cliente</button>
+                  <button type="button" class="success btn-sm" style="width:auto" onclick="enviarSolicitudAprobacionWhatsApp(${idx})">💬 2. Enviar Link de Aprobación por WhatsApp</button>
+                  <button type="button" class="secondary btn-sm" style="width:auto" onclick="copiarLinkAprobacionCliente(${idx})">📋 3. Copiar Link (${esc(r.id)})</button>
+                  <button type="button" class="secondary btn-sm" style="width:auto;background:#fff;border:1px solid #0f766e;color:#0f766e" onclick="renderizarDatosEnVistaCliente(ultimosReportesCargados[${idx}], false)">✍️ 4. Abrir Pantalla de Firma Ahora</button>
+                </div>
+                <div style="margin-top:8px;font-size:12px;color:#065f46">
+                  🔗 <b>Link directo para el cliente:</b> <a href="${esc(linkDirectoCliente)}" target="_blank" style="color:#0f766e;font-weight:700">${esc(linkDirectoCliente)}</a>
+                </div>
+                <div id="reqCliStatus-${idx}" class="status hidden" style="margin-top:8px"></div>
               </div>
               <div id="editBox-${idx}" class="edit-box hidden">
                 <div style="font-weight:700;color:#17324d;margin-bottom:8px;font-size:13.5px">✏️ Edición Completa del Reporte ${esc(r.id)}</div>
@@ -2480,35 +2550,147 @@ async function guardarFirmaClienteRemota() {
 }
 
 function gestionarRecepcionCliente(idx) {
+  const box = $("clientApprovalBox-" + idx);
+  if (box) {
+    box.classList.toggle("hidden");
+  }
+}
+
+async function enviarSolicitudAprobacionCorreo(idx) {
   const r = ultimosReportesCargados[idx];
   if (!r) return;
-  const linkCliente = `${window.location.origin}${window.location.pathname}?recepcion=${encodeURIComponent(r.id)}`;
-  const op = prompt(
-    `✍️ RECEPCIÓN DEL CLIENTE — FOLIO ${r.id} (${r.lugar})\n\n` +
-    `Elige cómo deseas gestionar la recepción con el cliente:\n` +
-    `1 = Abrir pantalla de Recepción / Firma ahora mismo\n` +
-    `2 = Enviar Link de Recepción al Cliente por WhatsApp\n` +
-    `3 = Copiar Link de Recepción (${linkCliente})`,
-    "1"
-  );
-  if (!op) return;
-  if (op.trim() === "1") {
-    renderizarDatosEnVistaCliente(r, false);
-  } else if (op.trim() === "2") {
-    const msg =
-      `📋 *Acta de Recepción de Trabajo - MYC SpA*\n` +
-      `• *Folio:* ${r.id}\n` +
-      `• *Lugar / Plantel:* ${r.lugar}\n` +
-      `• *Fecha:* ${r.fechaInicio}\n` +
-      `• *Trabajo:* ${r.trabajo}\n\n` +
-      `✍️ Para revisar el detalle y firmar la recepción conforme desde su teléfono o PC, abra este enlace:\n${linkCliente}`;
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, "_blank");
-  } else if (op.trim() === "3") {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(linkCliente).then(() => alert("Link copiado al portapapeles:\n" + linkCliente));
-    } else {
-      prompt("Copia este enlace para el cliente:", linkCliente);
+  const pin = sessionStorage.getItem("adminPinTerreno") || "";
+  const clientName = ($("reqCliNombre-" + idx) ? $("reqCliNombre-" + idx).value : "").trim();
+  const clientEmail = ($("reqCliEmail-" + idx) ? $("reqCliEmail-" + idx).value : "").trim();
+  const clientPhone = ($("reqCliPhone-" + idx) ? $("reqCliPhone-" + idx).value : "").trim();
+  const nota = ($("reqCliNota-" + idx) ? $("reqCliNota-" + idx).value : "").trim();
+  const st = $("reqCliStatus-" + idx);
+
+  if (!clientEmail || clientEmail.indexOf("@") === -1) {
+    alert("Por favor escribe el Correo Electrónico del cliente para enviarle la solicitud de aprobación.");
+    if ($("reqCliEmail-" + idx)) $("reqCliEmail-" + idx).focus();
+    return;
+  }
+
+  if (st) {
+    st.className = "status";
+    st.classList.remove("hidden");
+    st.textContent = "Enviando correo oficial de aprobación al cliente...";
+  }
+
+  try {
+    const resp = await fetch(API_URL + "?action=send_client_approval_request", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Pin": pin
+      },
+      body: JSON.stringify({
+        id: r.id,
+        canal: "email",
+        clientName,
+        clientEmail,
+        clientPhone,
+        nota
+      })
+    });
+    const data = await resp.json();
+    if (!resp.ok || !data.ok) throw new Error((data && data.error) || "Error");
+    if (st) {
+      st.className = "status ok";
+      st.innerHTML = `<strong>✓ Solicitud enviada por correo a <b>${esc(clientEmail)}</b>.</strong> El cliente recibió el resumen del trabajo y el botón para firmar la recepción en línea.`;
     }
+    setTimeout(() => cargar(), 1400);
+  } catch (e) {
+    if (st) {
+      st.className = "status warn";
+      st.textContent = "No se pudo enviar el correo en este momento. Verifica la dirección e intenta nuevamente.";
+    }
+  }
+}
+
+async function enviarSolicitudAprobacionWhatsApp(idx) {
+  const r = ultimosReportesCargados[idx];
+  if (!r) return;
+  const pin = sessionStorage.getItem("adminPinTerreno") || "";
+  const clientName = ($("reqCliNombre-" + idx) ? $("reqCliNombre-" + idx).value : "").trim();
+  const clientEmail = ($("reqCliEmail-" + idx) ? $("reqCliEmail-" + idx).value : "").trim();
+  const clientPhone = ($("reqCliPhone-" + idx) ? $("reqCliPhone-" + idx).value : "").trim();
+  const nota = ($("reqCliNota-" + idx) ? $("reqCliNota-" + idx).value : "").trim();
+  const linkCliente = `${window.location.origin}${window.location.pathname}?recepcion=${encodeURIComponent(r.id)}`;
+
+  try {
+    await fetch(API_URL + "?action=send_client_approval_request", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Pin": pin
+      },
+      body: JSON.stringify({
+        id: r.id,
+        canal: "whatsapp",
+        clientName,
+        clientEmail,
+        clientPhone,
+        nota
+      })
+    });
+  } catch (e) {}
+
+  const saludo = clientName ? `Hola *${clientName}*, ` : `Hola, `;
+  const msg =
+    `${saludo}le enviamos el acta de trabajo de *Inversiones y Mantenimiento MYC SpA* para su recepción conforme:\n\n` +
+    `📋 *Folio:* ${r.id}\n` +
+    (r.numeroAviso ? `🔢 *N° de Aviso:* ${r.numeroAviso}\n` : "") +
+    `📍 *Lugar / Plantel:* ${r.lugar}\n` +
+    `📅 *Fecha:* ${r.fechaInicio} (${r.horaInicio} a ${r.horaTermino} hrs)\n` +
+    `🛠️ *Trabajo:* ${r.trabajo}\n` +
+    (nota ? `\n📝 *Nota:* ${nota}\n` : "") +
+    `\n✍️ *Para revisar el detalle y aprobar/firmar la recepción desde su celular o PC, toque este enlace:*\n${linkCliente}`;
+
+  const cleanPhone = clientPhone.replace(/\D/g, "");
+  const waUrl = cleanPhone
+    ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(msg)}`
+    : `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+  window.open(waUrl, "_blank");
+  setTimeout(() => cargar(), 1000);
+}
+
+async function copiarLinkAprobacionCliente(idx) {
+  const r = ultimosReportesCargados[idx];
+  if (!r) return;
+  const pin = sessionStorage.getItem("adminPinTerreno") || "";
+  const clientName = ($("reqCliNombre-" + idx) ? $("reqCliNombre-" + idx).value : "").trim();
+  const linkCliente = `${window.location.origin}${window.location.pathname}?recepcion=${encodeURIComponent(r.id)}`;
+  const st = $("reqCliStatus-" + idx);
+
+  try {
+    await fetch(API_URL + "?action=send_client_approval_request", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Pin": pin
+      },
+      body: JSON.stringify({
+        id: r.id,
+        canal: "link",
+        clientName
+      })
+    });
+  } catch (e) {}
+
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(linkCliente).then(() => {
+      if (st) {
+        st.className = "status ok";
+        st.classList.remove("hidden");
+        st.innerHTML = `<strong>✓ Link copiado al portapapeles:</strong> <code>${esc(linkCliente)}</code>. Ya puedes pegarlo y enviárselo al cliente.`;
+      } else {
+        alert("Link copiado al portapapeles:\n" + linkCliente);
+      }
+    });
+  } else {
+    prompt("Copia este enlace para el cliente:", linkCliente);
   }
 }
 
