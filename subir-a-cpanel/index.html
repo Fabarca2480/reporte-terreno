@@ -146,7 +146,7 @@ footer a:hover{opacity:1}
             </select>
           </div>
           <div>
-            <input id="integranteInput" list="trabajadoresList" placeholder="O busca escribiendo apellido/nombre...">
+            <input id="integranteInput" list="trabajadoresList" placeholder="O busca escribiendo apellido/nombre..." onchange="if(trabajadoresCatalogo.includes(this.value.trim()))agregarIntegranteCuadrilla(true)">
           </div>
         </div>
         <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
@@ -156,7 +156,7 @@ footer a:hover{opacity:1}
           <button type="button" class="secondary btn-sm" onclick="agregarIntegranteCuadrilla()">+ Agregar integrante a la cuadrilla</button>
         </div>
         <div id="otroIntegranteBox" class="hidden" style="margin-top:8px">
-          <input id="otroIntegranteTxt" placeholder="Escribe Nombre y Apellido del otro integrante">
+          <input id="otroIntegranteTxt" placeholder="Escribe Nombre y Apellido del otro integrante" onkeydown="if(event.key==='Enter'){event.preventDefault();agregarIntegranteCuadrilla();}">
         </div>
         <div id="crewChips" class="crew-chips"></div>
         <div id="crewSummary" class="muted" style="margin-top:6px;font-size:12px">Sin acompañantes adicionales agregados (1 persona: quien genera el reporte).</div>
@@ -198,8 +198,9 @@ footer a:hover{opacity:1}
       </div>
       <div class="row" style="margin-top:12px">
         <div>
-          <label>Personas en cuadrilla</label>
-          <input id="personas" type="number" min="1" value="1">
+          <label>Personas en cuadrilla <span class="muted">(Automático)</span></label>
+          <input id="personas" type="number" min="1" value="1" readonly style="background:#f1f5f9;font-weight:800;color:#0f766e;cursor:default" title="Se calcula automáticamente según los integrantes seleccionados en la cuadrilla">
+          <div id="personasAutoHint" class="muted" style="margin-top:4px;font-size:11.5px">Calculado automáticamente: 1 responsable</div>
         </div>
         <div>
           <label>Tipo de horario</label>
@@ -990,6 +991,7 @@ function quitarIntegranteCuadrilla(idx) {
 function renderizarChipsCuadrilla() {
   const cont = $("crewChips");
   const sum = $("crewSummary");
+  const hint = $("personasAutoHint");
   if (!cont) return;
   cont.innerHTML = integrantesCuadrillaActual
     .map((nom, i) => `<span class="crew-chip">👷 ${esc(nom)} <button type="button" onclick="quitarIntegranteCuadrilla(${i})" title="Quitar">×</button></span>`)
@@ -997,6 +999,11 @@ function renderizarChipsCuadrilla() {
   const totalPersonas = 1 + integrantesCuadrillaActual.length;
   if ($("personas")) {
     $("personas").value = String(totalPersonas);
+  }
+  if (hint) {
+    hint.textContent = integrantesCuadrillaActual.length
+      ? `Automático: 1 responsable + ${integrantesCuadrillaActual.length} integrante(s) = ${totalPersonas} personas`
+      : `Calculado automáticamente: 1 responsable`;
   }
   if (sum) {
     sum.innerHTML = integrantesCuadrillaActual.length
@@ -1086,7 +1093,7 @@ function toggleRecepcionTerreno() {
 async function init() {
   $("hdrLogo").src = LOGO_MYC;
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js?v=14").then(reg => {
+    navigator.serviceWorker.register("sw.js?v=15").then(reg => {
       try { reg.update(); } catch (e) {}
     }).catch(() => {});
   }
@@ -1229,7 +1236,8 @@ function build() {
     };
   }
 
-  const cantPersonas = Math.max(1 + integrantesCuadrillaActual.length, parseInt($("personas").value || "1", 10) || 1);
+  const cantPersonas = 1 + integrantesCuadrillaActual.length;
+  if ($("personas")) $("personas").value = String(cantPersonas);
   const numeroAviso = (($("numeroAviso") ? $("numeroAviso").value : "") || ($("recNumeroAviso") ? $("recNumeroAviso").value : "")).trim();
   const uid = "UID-" + Date.now() + "-" + Math.random().toString(16).slice(2, 8);
   return {
@@ -1822,8 +1830,8 @@ async function cargar() {
                 </div>
                 <div class="row" style="margin-top:8px">
                   <div>
-                    <label>Personas en cuadrilla</label>
-                    <input id="editPers-${idx}" type="number" min="1" value="${esc(r.personas || "2")}">
+                    <label>Personas en cuadrilla (Automático según integrantes)</label>
+                    <input id="editPers-${idx}" type="number" min="1" value="${esc(r.personas || String(1 + (Array.isArray(r.integrantes) ? r.integrantes.length : 0)))}" style="background:#f8fafc;font-weight:700">
                   </div>
                   <div>
                     <label>Tipo de horario (Declarado)</label>
@@ -1850,7 +1858,7 @@ async function cargar() {
                   </div>
                   <div>
                     <label>Integrantes adicionales (separados por coma)</label>
-                    <input id="editInt-${idx}" list="trabajadoresList" placeholder="Ej: BECERRA FLORES MATIAS ANDRES" value="${esc(Array.isArray(r.integrantes) ? r.integrantes.join(", ") : "")}">
+                    <input id="editInt-${idx}" list="trabajadoresList" placeholder="Ej: BECERRA FLORES MATIAS ANDRES" value="${esc(Array.isArray(r.integrantes) ? r.integrantes.join(", ") : "")}" oninput="recalcularPersonasEdicion(${idx})">
                   </div>
                 </div>
                 <div style="margin-top:8px">
@@ -1884,6 +1892,14 @@ async function cargar() {
 function mostrarEdicion(idx) {
   const box = $("editBox-" + idx);
   if (box) box.classList.toggle("hidden");
+}
+
+function recalcularPersonasEdicion(idx) {
+  const inpInt = $("editInt-" + idx);
+  const inpPers = $("editPers-" + idx);
+  if (!inpInt || !inpPers) return;
+  const lista = inpInt.value.split(",").map(s => s.trim()).filter(Boolean);
+  inpPers.value = String(1 + lista.length);
 }
 
 async function guardarEdicion(id, idx) {
