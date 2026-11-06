@@ -249,12 +249,16 @@ footer a:hover{opacity:1}
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
         <label style="margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:8px;color:#17324d">
           <input id="reqRecepcionCliente" type="checkbox" style="width:18px;height:18px" onchange="toggleRecepcionTerreno()">
-          <span>✍️ Recepción Conforme del Cliente en Terreno <span class="muted" style="font-weight:400">(Activar cuando se requiera)</span></span>
+          <span>✍️ Recepción Conforme del Cliente <span class="muted" style="font-weight:400">(Firma en pantalla o por WhatsApp)</span></span>
         </label>
-        <button type="button" class="secondary btn-sm" onclick="abrirMuestraRecepcionCliente()">👁️ Ver Muestra Vista Cliente</button>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button type="button" class="success btn-sm" style="background:#16a34a" onclick="enviarReporteClienteWhatsAppDesdeTerreno()">📲 Enviar por WhatsApp al Cliente</button>
+          <button type="button" class="secondary btn-sm" onclick="abrirMuestraRecepcionCliente()">👁️ Ver Muestra</button>
+        </div>
       </div>
-      <div class="muted" style="margin-top:5px;font-size:12px">
-        Úsalo cuando el Jefe de Plantel / ITO / Supervisor del cliente reciba el trabajo en terreno, o déjalo sin marcar para solicitarle la firma después por enlace desde Logística.
+      <div class="muted" style="margin-top:5px;font-size:12.5px;line-height:1.4">
+        • <b>Si el cliente está en el plantel:</b> Marca la casilla y pídele que firme con el dedo aquí mismo en tu teléfono.<br>
+        • <b>Si el cliente no está cerca:</b> Toca <b>"📲 Enviar por WhatsApp al Cliente"</b> para enviarle el enlace directo y que él firme desde su celular.
       </div>
 
       <div id="boxRecepcionTerreno" class="hidden" style="margin-top:12px;background:#fff;border:1px solid #cbd5e1;border-radius:10px;padding:12px">
@@ -1021,6 +1025,76 @@ function renderizarChipsCuadrilla() {
   }
 }
 
+
+// --- ENVÍO DE REPORTE POR WHATSAPP AL CLIENTE DIRECTAMENTE DESDE TERRENO ---
+async function enviarReporteClienteWhatsAppDesdeTerreno() {
+  let r;
+  try {
+    if ($("fotos").files.length > 0 && fotosComprimidas.length === 0) {
+      await previsualizarFotos();
+    }
+    r = build();
+  } catch (err) {
+    alert("Para enviar el reporte al cliente, primero completa los datos obligatorios:\n\n" + err.message);
+    return;
+  }
+
+  if (!navigator.onLine) {
+    alert("Para generar el enlace oficial de firma remota del cliente por WhatsApp se requiere conexión a internet.\n\nEnvía el reporte normalmente; quedará guardado en tu teléfono y apenas recupere señal se enviará y podrás compartir el enlace.");
+    return;
+  }
+
+  const titular = r.trabajador || localStorage.getItem("nombreTrabajadorTerreno") || "Operador MYC";
+  const numAviso = r.numeroAviso ? `🔢 *N° de Aviso:* ${r.numeroAviso}\n` : "";
+  const lugar = r.lugar;
+  const trabajo = r.trabajo;
+  const fecha = r.fechaInicio;
+  const horario = `${r.horaInicio} a ${r.horaTermino} hrs`;
+
+  const conf = confirm(
+    `📲 ENVIAR REPORTE AL CLIENTE POR WHATSAPP\n\n` +
+    `• Lugar: ${lugar}\n` +
+    `• Responsable: ${titular}\n` +
+    `• Fecha: ${fecha} (${horario})\n\n` +
+    `El reporte se guardará en el sistema de recepción central y se abrirá WhatsApp con el enlace oficial para que el cliente firme.\n\n¿Deseas continuar?`
+  );
+  if (!conf) return;
+
+  const btn = $("btnEnviar");
+  btn.disabled = true;
+  btn.textContent = "ENVIANDO Y PREPARANDO ENLACE...";
+
+  try {
+    const res = await enviarReporteAlServidor(r);
+    const folioOficial = (res && res.report && res.report.id) ? res.report.id : "";
+    const linkCliente = `${window.location.origin}${window.location.pathname}?recepcion=${encodeURIComponent(folioOficial)}`;
+
+    const msg =
+      `📋 *Acta de Recepción de Trabajo - Inversiones y Mantenimiento MYC SpA*\n\n` +
+      `Estimado cliente, junto con saludar, le compartimos el reporte de los trabajos realizados por nuestra cuadrilla en terreno:\n\n` +
+      `• *Folio:* ${folioOficial}\n` +
+      (numAviso ? `${numAviso}` : "") +
+      `• *Lugar / Plantel:* ${lugar}\n` +
+      `• *Fecha:* ${fecha} (${horario})\n` +
+      `• *Responsable en terreno:* ${titular}\n` +
+      `• *Trabajo realizado:* ${trabajo}\n\n` +
+      `✍️ *Para revisar el detalle y firmar la recepción conforme desde su teléfono o computador, por favor ingrese aquí:*\n` +
+      `${linkCliente}\n\n` +
+      `_Inversiones y Mantenimiento MYC SpA · RUT: 77.547.271-5_`;
+
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, "_blank");
+
+    $("status").className = "status ok";
+    $("status").innerHTML = `<strong>✓ Reporte ${esc(folioOficial)} guardado en central y enlace de firma preparado para WhatsApp.</strong> (${esc(lugar)})`;
+    limpiar();
+  } catch (e) {
+    alert("Ocurrió un error al enviar el reporte al servidor: " + (e.message || "Error de red"));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "ENVIAR REPORTE";
+  }
+}
+
 // --- FIRMA DIGITAL EN PANTALLA (TERRENO Y VISTA CLIENTE) ---
 function inicializarCanvasFirma(canvasId) {
   const canvas = $(canvasId);
@@ -1102,7 +1176,7 @@ function toggleRecepcionTerreno() {
 async function init() {
   $("hdrLogo").src = LOGO_MYC;
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js?v=17").then(reg => {
+    navigator.serviceWorker.register("sw.js?v=18").then(reg => {
       try { reg.update(); } catch (e) {}
     }).catch(() => {});
   }
