@@ -68,6 +68,12 @@ button:disabled{opacity:.6;cursor:not-allowed}
 .sublist{background:#f8fafc;border-radius:8px;padding:8px 10px;margin:6px 0;font-size:12.5px}
 .preview-box{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .preview-box img{width:70px;height:70px;object-fit:cover;border-radius:8px;border:1px solid #cbd5e1}
+.edit-photos-grid{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0}
+.edit-photo-card{position:relative;width:104px;background:#fff;border:1px solid #cbd5e1;border-radius:8px;padding:4px;text-align:center}
+.edit-photo-card img{width:100%;height:78px;object-fit:cover;border-radius:6px;display:block}
+.edit-photo-card .btn-del-foto{position:absolute;top:-6px;right:-6px;width:22px;height:22px;padding:0;border-radius:50%;background:#dc2626;color:#fff;font-size:13px;line-height:1;border:2px solid #fff;cursor:pointer}
+.edit-photo-card .tag-new-foto{display:block;font-size:10.5px;font-weight:700;color:#0f766e;margin-top:3px}
+.edit-photo-card .tag-old-foto{display:block;font-size:10.5px;color:#64748b;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .worker-banner{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#eef6ff;border:1px solid #bfdbfe;padding:12px 14px;border-radius:11px}
 .worker-banner b{color:#1e3a8a;font-size:15px}
 .install-banner{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#ecfdf5;border:1px solid #6ee7b7;padding:12px 14px;border-radius:12px;margin-bottom:12px}
@@ -538,6 +544,7 @@ footer a:hover{opacity:1}
         </div>
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
           <button class="primary" style="flex:1;min-width:180px" onclick="cargar()">🔄 ACTUALIZAR LISTA</button>
+          <a href="https://www.mycmantencion.cl/operaciones/" target="_blank" class="primary" style="flex:1;min-width:180px;text-align:center;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;background:#1d4ed8;color:#fff;">📝 ABRIR COTIZADOR</a>
           <button class="success" style="flex:1.5;min-width:250px" onclick="exportarExcelValorizacion()">📥 EXCEL COTIZACIÓN MYC (RESUMEN + HOJA POR TRABAJO)</button>
         </div>
       </div>
@@ -627,6 +634,7 @@ const $ = id => document.getElementById(id);
 const API_URL = "api.php";
 let fotosComprimidas = [];
 let ultimosReportesCargados = [];
+let editFotosEstado = {};
 let isSyncing = false;
 let deferredInstallPrompt = null;
 let logoTapCount = 0;
@@ -1177,7 +1185,7 @@ function toggleRecepcionTerreno() {
 async function init() {
   $("hdrLogo").src = LOGO_MYC;
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js?v=18").then(reg => {
+    navigator.serviceWorker.register("sw.js?v=20").then(reg => {
       try { reg.update(); } catch (e) {}
     }).catch(() => {});
   }
@@ -1805,6 +1813,10 @@ async function cargar() {
     $("lista").innerHTML = ultimosReportesCargados.length
       ? ultimosReportesCargados
           .map((r, idx) => {
+            editFotosEstado[idx] = {
+              existentes: Array.isArray(r.fotos) ? r.fotos.map(f => ({ nombre: f.nombre || "foto.jpg", url: f.url || "" })) : [],
+              nuevas: []
+            };
             const matHtml = (r.materiales || []).length
               ? `<div class="sublist"><b>Materiales:</b> ${(r.materiales || []).map(m => `${esc(m.cantidad)} ${esc(m.unidad)} ${esc(m.descripcion)}`).join(" · ")}</div>`
               : "";
@@ -1889,7 +1901,7 @@ async function cargar() {
               }
               <div class="report-actions">
                 <button type="button" class="secondary btn-sm" onclick="imprimirFicha(${idx})">📄 Ficha PDF</button>
-                <button type="button" class="success btn-sm" onclick="exportarExcelIndividual(${idx})">📊 Excel Cotización MYC</button>
+                <button type="button" class="success btn-sm" style="background:#1d4ed8; color:#fff;" onclick="generarCotizacionDesdeReporte(${idx})" title="Abrir y pre-cargar en el Cotizador Oficial">📝 Generar Cotización</button>
                 <button type="button" class="success btn-sm" style="background:#16a34a" onclick="enviarSolicitudAprobacionWhatsApp(${idx})">📲 Solicitar Aprobación Cliente por WhatsApp</button>
                 <button type="button" class="secondary btn-sm" style="background:${recFirmada ? "#ecfdf5" : "#fef3c7"};color:${recFirmada ? "#065f46" : "#92400e"};border:1px solid ${recFirmada ? "#6ee7b7" : "#f59e0b"}" onclick="gestionarRecepcionCliente(${idx})">
                   ${recFirmada ? "✅ Ver Recepción Cliente" : "✍️ Más Opciones Aprobación"}
@@ -2021,9 +2033,17 @@ async function cargar() {
                   <div id="editMaqList-${idx}">${maqEditRows}</div>
                   <button type="button" class="secondary btn-sm" onclick="add('editMaqList-${idx}','Equipo / maquinaria')">+ Agregar maquinaria</button>
                 </div>
+                <div style="margin-top:12px;padding-top:10px;border-top:1px dashed #cbd5e1">
+                  <label>📷 Fotografías del reporte <span id="editFotosCount-${idx}" class="muted" style="font-weight:400">(${(r.fotos || []).length} foto(s))</span></label>
+                  <div id="editFotosGrid-${idx}" class="edit-photos-grid">${generarHtmlFotosEdicion(idx)}</div>
+                  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px">
+                    <input id="editFotosInput-${idx}" type="file" accept="image/*" multiple style="width:auto;flex:1;min-width:210px;padding:7px;font-size:13px" onchange="agregarFotosEdicion(${idx})">
+                  </div>
+                  <div id="editFotosInfo-${idx}" class="muted" style="font-size:11.5px;margin-top:4px">Puedes quitar fotos con la <b>×</b> roja o subir nuevas imágenes (máx. 24 por reporte). Los cambios se aplican al pulsar "Guardar todos los cambios".</div>
+                </div>
                 <div style="display:flex;gap:8px;margin-top:14px">
-                  <button type="button" class="primary btn-sm" style="width:auto" onclick="guardarEdicion('${esc(r.id)}', ${idx})">💾 Guardar todos los cambios</button>
-                  <button type="button" class="secondary btn-sm" onclick="mostrarEdicion(${idx})">Cancelar</button>
+                  <button id="btnGuardarEdicion-${idx}" type="button" class="primary btn-sm" style="width:auto" onclick="guardarEdicion('${esc(r.id)}', ${idx})">💾 Guardar todos los cambios</button>
+                  <button type="button" class="secondary btn-sm" onclick="cancelarEdicion(${idx})">Cancelar</button>
                 </div>
               </div>
             </div>`;
@@ -2038,6 +2058,87 @@ async function cargar() {
 function mostrarEdicion(idx) {
   const box = $("editBox-" + idx);
   if (box) box.classList.toggle("hidden");
+}
+
+function cancelarEdicion(idx) {
+  const r = ultimosReportesCargados[idx];
+  if (r) {
+    editFotosEstado[idx] = {
+      existentes: Array.isArray(r.fotos) ? r.fotos.map(f => ({ nombre: f.nombre || "foto.jpg", url: f.url || "" })) : [],
+      nuevas: []
+    };
+    if ($("editFotosInput-" + idx)) $("editFotosInput-" + idx).value = "";
+    renderizarFotosEdicion(idx);
+  }
+  const box = $("editBox-" + idx);
+  if (box) box.classList.add("hidden");
+}
+
+function generarHtmlFotosEdicion(idx) {
+  const st = editFotosEstado[idx] || { existentes: [], nuevas: [] };
+  if (!st.existentes.length && !st.nuevas.length) {
+    return `<span class="muted" style="font-size:12px">Sin fotografías. Selecciona archivos abajo si deseas agregar.</span>`;
+  }
+  const htmlExistentes = st.existentes.map((f, fIdx) => `
+    <div class="edit-photo-card">
+      <button type="button" class="btn-del-foto" title="Quitar fotografía" onclick="quitarFotoExistenteEdicion(${idx}, ${fIdx})">×</button>
+      <a href="${esc(f.url)}" target="_blank"><img src="${esc(f.url)}" alt="${esc(f.nombre || "Foto")}"></a>
+      <span class="tag-old-foto" title="${esc(f.nombre || "Foto")}">${esc(f.nombre || "Foto " + (fIdx + 1))}</span>
+    </div>`).join("");
+  const htmlNuevas = st.nuevas.map((f, nIdx) => `
+    <div class="edit-photo-card" style="border-color:#0f766e;background:#f0fdf4">
+      <button type="button" class="btn-del-foto" title="Quitar nueva fotografía" onclick="quitarFotoNuevaEdicion(${idx}, ${nIdx})">×</button>
+      <img src="${f.dataUrl}" alt="${esc(f.nombre)}">
+      <span class="tag-new-foto">🆕 Por subir</span>
+    </div>`).join("");
+  return htmlExistentes + htmlNuevas;
+}
+
+function renderizarFotosEdicion(idx) {
+  const st = editFotosEstado[idx] || { existentes: [], nuevas: [] };
+  const grid = $("editFotosGrid-" + idx);
+  const cnt = $("editFotosCount-" + idx);
+  if (grid) grid.innerHTML = generarHtmlFotosEdicion(idx);
+  if (cnt) {
+    const total = st.existentes.length + st.nuevas.length;
+    cnt.textContent = `(${total} foto(s)${st.nuevas.length ? `, ${st.nuevas.length} nueva(s)` : ""})`;
+  }
+}
+
+function quitarFotoExistenteEdicion(idx, fotoIdx) {
+  const st = editFotosEstado[idx];
+  if (!st || !st.existentes) return;
+  st.existentes.splice(fotoIdx, 1);
+  renderizarFotosEdicion(idx);
+}
+
+function quitarFotoNuevaEdicion(idx, nuevaIdx) {
+  const st = editFotosEstado[idx];
+  if (!st || !st.nuevas) return;
+  st.nuevas.splice(nuevaIdx, 1);
+  renderizarFotosEdicion(idx);
+}
+
+async function agregarFotosEdicion(idx) {
+  const input = $("editFotosInput-" + idx);
+  const info = $("editFotosInfo-" + idx);
+  if (!input || !input.files || !input.files.length) return;
+  const st = editFotosEstado[idx] || (editFotosEstado[idx] = { existentes: [], nuevas: [] });
+  const disponibles = Math.max(0, 24 - (st.existentes.length + st.nuevas.length));
+  if (disponibles === 0) {
+    alert("Este reporte ya alcanzó el máximo de 24 fotografías.");
+    input.value = "";
+    return;
+  }
+  const files = [...input.files].slice(0, disponibles);
+  if (info) info.textContent = "Optimizando nuevas fotografías...";
+  for (const f of files) {
+    const comp = await comprimirArchivoImagen(f);
+    if (comp) st.nuevas.push(comp);
+  }
+  input.value = "";
+  renderizarFotosEdicion(idx);
+  if (info) info.innerHTML = `Puedes quitar fotos con la <b>×</b> roja o subir nuevas imágenes (máx. 24 por reporte). Los cambios se aplican al pulsar "Guardar todos los cambios".`;
 }
 
 function recalcularPersonasEdicion(idx) {
@@ -2077,6 +2178,13 @@ async function guardarEdicion(id, idx) {
     return;
   }
 
+  const stFotos = editFotosEstado[idx] || { existentes: [], nuevas: [] };
+  const btn = $("btnGuardarEdicion-" + idx);
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = stFotos.nuevas.length ? "💾 Guardando y subiendo fotos..." : "💾 Guardando cambios...";
+  }
+
   try {
     const resp = await fetch(API_URL + "?action=update", {
       method: "POST",
@@ -2100,13 +2208,34 @@ async function guardarEdicion(id, idx) {
         solicita,
         trabajo,
         materiales,
-        maquinaria
+        maquinaria,
+        fotos: stFotos.existentes
       })
     });
     if (!resp.ok) throw new Error();
+
+    for (let i = 0; i < stFotos.nuevas.length; i++) {
+      const f = stFotos.nuevas[i];
+      const optDataUrl = await optimizarDataUrlParaEnvio(f.dataUrl);
+      const blob = dataUrlToBlob(optDataUrl);
+      const fd = new FormData();
+      fd.append("id", id);
+      fd.append("fotos[]", blob, f.nombre || `foto-edit-${i + 1}.jpg`);
+      const upResp = await fetch(API_URL + "?action=upload_photo", {
+        method: "POST",
+        headers: { "X-Admin-Pin": pin },
+        body: fd
+      });
+      if (!upResp.ok) throw new Error("No se pudo subir una de las fotografías.");
+    }
+
     await cargar();
   } catch (e) {
-    alert("No se pudo actualizar el reporte.");
+    alert(e && e.message ? e.message : "No se pudo actualizar el reporte.");
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "💾 Guardar todos los cambios";
+    }
   }
 }
 
@@ -3506,6 +3635,45 @@ function exportarExcelValorizacion() {
     ultimosReportesCargados,
     `Cotizaciones_MYC_Terreno_${new Date().toISOString().slice(0, 10)}.xlsx`
   );
+}
+
+function generarCotizacionDesdeReporte(idx) {
+  const r = ultimosReportesCargados[idx];
+  if (!r) return;
+
+  const aviso = String(r.numeroAviso || (r.recepcionCliente && r.recepcionCliente.numeroAviso) || '').trim();
+  const lugar = String(r.lugar || '').trim();
+  const solicita = String(r.solicita || (r.recepcionCliente && (r.recepcionCliente.destinatarioNombre || r.recepcionCliente.nombre)) || '').trim();
+  const trabajo = String(r.trabajo || '').trim();
+  const fecha = String(r.fechaInicio || r.fecha || '').slice(0, 10);
+  const folio = String(r.id || '').trim();
+  const horas = typeof calcularHorasTrabajo === 'function' ? calcularHorasTrabajo(r) : 0;
+  const personas = (r.integrantes && r.integrantes.length) ? (r.integrantes.length + 1) : 2;
+
+  const matList = (r.materiales || []).map(m => ({
+    descripcion: m.descripcion || m.nombre || '',
+    unidad: m.unidad || 'UN',
+    cantidad: m.cantidad || 1
+  }));
+
+  const params = new URLSearchParams();
+  params.set('from_report', '1');
+  params.set('folio', folio);
+  params.set('tipo', aviso ? 'COTALKER_BIOCORNECHE' : 'NORMAL');
+  params.set('cliente', 'AGRICOLA SUPER');
+  params.set('lugar', lugar);
+  params.set('solicita', solicita);
+  if (aviso) params.set('aviso', aviso);
+  if (fecha) params.set('fecha', fecha);
+  if (trabajo) params.set('trabajo', trabajo);
+  if (horas > 0) params.set('horas', String(horas));
+  params.set('personas', String(personas));
+  if (matList.length > 0) {
+    params.set('materiales', JSON.stringify(matList));
+  }
+
+  const cotizadorUrl = `https://www.mycmantencion.cl/operaciones/?${params.toString()}`;
+  window.open(cotizadorUrl, '_blank');
 }
 
 function exportarExcelIndividual(idx) {

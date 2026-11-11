@@ -950,7 +950,7 @@ if ($method === 'POST' && $action === 'delete') {
             if (!empty($r['fotos']) && is_array($r['fotos'])) {
                 foreach ($r['fotos'] as $f) {
                     $relUrl = ltrim((string)($f['url'] ?? ''), '/');
-                    if (strpos($relUrl, 'uploads/') === 0) {
+                    if (strpos($relUrl, 'uploads/') === 0 && strpos($relUrl, '..') === false) {
                         $filePath = $baseDir . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relUrl);
                         if (is_file($filePath)) {
                             @unlink($filePath);
@@ -987,6 +987,7 @@ if ($method === 'POST' && $action === 'update') {
     $reports = readReports($dbFile);
     [$reports, ] = ensureShortFolios($dbFile, $reports);
     $updatedReport = null;
+    $removedPhotoUrls = [];
 
     foreach ($reports as &$r) {
         if (($r['id'] ?? '') === $id) {
@@ -1059,7 +1060,29 @@ if ($method === 'POST' && $action === 'update') {
                 $r['maquinaria'] = $cleanMaq;
             }
             if (isset($input['fotos']) && is_array($input['fotos'])) {
-                $r['fotos'] = array_values($input['fotos']);
+                $oldUrls = [];
+                foreach (($r['fotos'] ?? []) as $oldF) {
+                    $u = trim((string)($oldF['url'] ?? ''));
+                    if ($u !== '') $oldUrls[] = $u;
+                }
+                $cleanFotos = [];
+                $keptUrls = [];
+                foreach ($input['fotos'] as $f) {
+                    if (!is_array($f)) continue;
+                    $url = trim((string)($f['url'] ?? ''));
+                    if ($url === '') continue;
+                    $cleanFotos[] = [
+                        'nombre' => trim((string)($f['nombre'] ?? basename($url))),
+                        'url' => $url
+                    ];
+                    $keptUrls[] = $url;
+                }
+                $r['fotos'] = $cleanFotos;
+                foreach ($oldUrls as $u) {
+                    if (!in_array($u, $keptUrls, true)) {
+                        $removedPhotoUrls[] = $u;
+                    }
+                }
             }
             $r['updatedAt'] = gmdate('Y-m-d\TH:i:s.v\Z');
             $updatedReport = $r;
@@ -1075,6 +1098,34 @@ if ($method === 'POST' && $action === 'update') {
     }
 
     writeReports($dbFile, $reports);
+
+    if (!empty($removedPhotoUrls)) {
+        $referencedUrls = [];
+        foreach ($reports as $repItem) {
+            foreach (($repItem['fotos'] ?? []) as $fItem) {
+                $u = trim((string)($fItem['url'] ?? ''));
+                if ($u !== '') $referencedUrls[$u] = true;
+            }
+            foreach (($repItem['reportesOriginalesBackup'] ?? []) as $bakItem) {
+                foreach (($bakItem['fotos'] ?? []) as $fBak) {
+                    $u = trim((string)($fBak['url'] ?? ''));
+                    if ($u !== '') $referencedUrls[$u] = true;
+                }
+            }
+        }
+        foreach (array_unique($removedPhotoUrls) as $remUrl) {
+            if (!isset($referencedUrls[$remUrl])) {
+                $relUrl = ltrim($remUrl, '/');
+                if (strpos($relUrl, 'uploads/') === 0 && strpos($relUrl, '..') === false) {
+                    $filePath = $baseDir . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relUrl);
+                    if (is_file($filePath)) {
+                        @unlink($filePath);
+                    }
+                }
+            }
+        }
+    }
+
     echo json_encode(['ok' => true, 'report' => $updatedReport], JSON_UNESCAPED_UNICODE);
     exit;
 }
@@ -1325,8 +1376,11 @@ if ($method === 'POST' && $action === 'upload_photo') {
     $reports = readReports($dbFile);
     [$reports, ] = ensureShortFolios($dbFile, $reports);
     $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic'];
+    $isAdmin = ($_SERVER['HTTP_X_ADMIN_PIN'] ?? '') === ADMIN_PIN;
+    $maxPhotos = $isAdmin ? 24 : 8;
     $found = false;
     $addedPhotos = [];
+    $finalPhotos = [];
 
     foreach ($reports as &$r) {
         if (($reportId !== '' && ($r['id'] ?? '') === $reportId) || ($clientUid !== '' && ($r['clientUid'] ?? '') === $clientUid)) {
@@ -1338,7 +1392,7 @@ if ($method === 'POST' && $action === 'upload_photo') {
                 $files = $_FILES['fotos'];
                 $count = is_array($files['name']) ? count($files['name']) : 1;
                 for ($i = 0; $i < $count; $i++) {
-                    if (count($r['fotos']) >= 8) break;
+                    if (count($r['fotos']) >= $maxPhotos) break;
                     $err = is_array($files['error']) ? $files['error'][$i] : $files['error'];
                     if ($err !== UPLOAD_ERR_OK) continue;
                     $tmpName = is_array($files['tmp_name']) ? $files['tmp_name'][$i] : $files['tmp_name'];
@@ -1355,6 +1409,8 @@ if ($method === 'POST' && $action === 'upload_photo') {
                     }
                 }
             }
+            $r['updatedAt'] = gmdate('Y-m-d\TH:i:s.v\Z');
+            $finalPhotos = $r['fotos'];
             break;
         }
     }
@@ -1367,7 +1423,7 @@ if ($method === 'POST' && $action === 'upload_photo') {
     }
 
     writeReports($dbFile, $reports);
-    echo json_encode(['ok' => true, 'added' => count($addedPhotos)], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['ok' => true, 'added' => count($addedPhotos), 'fotos' => $finalPhotos], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
