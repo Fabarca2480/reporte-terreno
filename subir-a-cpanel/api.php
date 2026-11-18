@@ -624,6 +624,65 @@ if ($method === 'GET' && $action === 'workers_catalog') {
     exit;
 }
 
+if ($method === 'GET' && $action === 'my_reports') {
+    $worker = trim((string)($_GET['worker'] ?? ''));
+    if ($worker === '') {
+        http_response_code(400);
+        echo json_encode(['error' => 'Nombre de trabajador requerido']);
+        exit;
+    }
+    $reports = readReports($dbFile);
+    [$reports, ] = ensureShortFolios($dbFile, $reports);
+    $wLower = mb_strtolower($worker, 'UTF-8');
+    $matched = [];
+
+    foreach ($reports as $r) {
+        $trabLower = mb_strtolower((string)($r['trabajador'] ?? ''), 'UTF-8');
+        $inInteg = false;
+        if (!empty($r['integrantes']) && is_array($r['integrantes'])) {
+            foreach ($r['integrantes'] as $integ) {
+                if (mb_strtolower(trim((string)$integ), 'UTF-8') === $wLower) {
+                    $inInteg = true;
+                    break;
+                }
+            }
+        }
+        if ($trabLower === $wLower || $inInteg) {
+            // Devolver versión limpia y segura (sin datos internos de pago/recargo)
+            $matched[] = [
+                'id' => $r['id'] ?? '',
+                'lugar' => $r['lugar'] ?? '',
+                'numeroAviso' => $r['numeroAviso'] ?? '',
+                'solicita' => $r['solicita'] ?? '',
+                'trabajador' => $r['trabajador'] ?? '',
+                'integrantes' => $r['integrantes'] ?? [],
+                'personas' => $r['personas'] ?? '1',
+                'fechaInicio' => $r['fechaInicio'] ?? '',
+                'fechaTermino' => $r['fechaTermino'] ?? ($r['fechaInicio'] ?? ''),
+                'horaInicio' => $r['horaInicio'] ?? '',
+                'horaTermino' => $r['horaTermino'] ?? '',
+                'trabajo' => $r['trabajo'] ?? '',
+                'materiales' => $r['materiales'] ?? [],
+                'maquinaria' => $r['maquinaria'] ?? [],
+                'estado' => $r['estado'] ?? 'Terminado',
+                'fotos' => $r['fotos'] ?? [],
+                'recepcionCliente' => $r['recepcionCliente'] ?? null,
+                'createdAt' => $r['createdAt'] ?? '',
+                'updatedAt' => $r['updatedAt'] ?? ''
+            ];
+        }
+    }
+
+    usort($matched, function ($a, $b) {
+        return strcmp($b['createdAt'] ?? '', $a['createdAt'] ?? '');
+    });
+
+    // Limitar a los últimos 40 reportes para agilidad en móvil
+    $matched = array_slice($matched, 0, 40);
+    echo json_encode(['ok' => true, 'reports' => $matched], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 if ($method === 'POST' && $action === 'save_workers_catalog') {
     checkAdminPin();
     $input = json_decode(file_get_contents('php://input'), true) ?? [];

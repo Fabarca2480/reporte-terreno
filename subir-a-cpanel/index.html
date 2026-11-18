@@ -82,6 +82,10 @@ button:disabled{opacity:.6;cursor:not-allowed}
 .report-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .edit-box{background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:12px;margin-top:10px}
 .admin-bar{display:flex;justify-content:space-between;align-items:center;background:#1e293b;color:#fff;padding:10px 14px;border-radius:12px;margin-bottom:12px}
+.my-rep-card{border:1px solid #cbd5e1;background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:10px;box-shadow:0 1px 4px #0000000a}
+.my-rep-card h4{margin:0 0 5px;font-size:14.5px;color:#17324d;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
+.my-rep-card p{margin:3px 0;font-size:12.5px;line-height:1.4;color:#334155}
+.my-rep-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .crew-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .crew-chip{display:inline-flex;align-items:center;gap:6px;background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;padding:5px 10px;border-radius:99px;font-size:13px;font-weight:600}
 .crew-chip button{background:transparent;color:#0369a1;padding:0 2px;font-size:15px;line-height:1;border-radius:4px}
@@ -320,6 +324,24 @@ footer a:hover{opacity:1}
         <button id="btnSyncManual" class="secondary hidden" style="padding:7px 12px;font-size:12px" onclick="sync(true)">🔄 Reintentar ahora</button>
       </div>
       <div id="pend" class="muted">Sin pendientes.</div>
+    </div>
+
+    <!-- HISTORIAL DEL TRABAJADOR: MIS REPORTES ENVIADOS (CON COPIAS, WHATSAPP Y PDF) -->
+    <div class="card" style="border:1.5px solid #0f766e;background:#f0fdf4">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <div>
+          <b style="font-size:15px;color:#0f766e">📋 Mis Reportes Enviados (Historial y Copias)</b>
+          <div class="muted" style="font-size:12px;color:#134e4a">Revisa tus trabajos enviados, descarga tu comprobante en PDF o compártelo por WhatsApp.</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button type="button" class="success btn-sm" onclick="cargarMisReportes(true)">🔄 Actualizar</button>
+          <button id="btnToggleMisReportes" type="button" class="secondary btn-sm" onclick="toggleSeccionMisReportes()">Ver Historial</button>
+        </div>
+      </div>
+      <div id="misReportesWrap" class="hidden" style="margin-top:12px">
+        <div id="misReportesStatus" class="muted" style="font-size:12px;margin-bottom:8px">Cargando tus reportes...</div>
+        <div id="misReportesLista"></div>
+      </div>
     </div>
   </section>
 
@@ -634,6 +656,7 @@ const $ = id => document.getElementById(id);
 const API_URL = "api.php";
 let fotosComprimidas = [];
 let ultimosReportesCargados = [];
+let ultimosMisReportes = [];
 let editFotosEstado = {};
 let isSyncing = false;
 let deferredInstallPrompt = null;
@@ -745,6 +768,7 @@ function fijarTrabajador() {
   }
   localStorage.setItem("nombreTrabajadorTerreno", val);
   actualizarVistaTrabajador();
+  cargarMisReportes(false);
 }
 
 function cambiarTrabajador() {
@@ -1093,15 +1117,174 @@ async function enviarReporteClienteWhatsAppDesdeTerreno() {
 
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, "_blank");
 
+    guardarEnHistorialLocal(res && res.report ? res.report : r);
     $("status").className = "status ok";
-    $("status").innerHTML = `<strong>✓ Reporte ${esc(folioOficial)} guardado en central y enlace de firma preparado para WhatsApp.</strong> (${esc(lugar)})`;
+    $("status").innerHTML =
+      `<strong>✓ Reporte ${esc(folioOficial)} guardado en central y enlace de firma preparado para WhatsApp.</strong> (${esc(lugar)})<br>` +
+      `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">` +
+      `  <button type="button" class="success btn-sm" style="background:#16a34a" onclick="compartirReporteTrabajadorWhatsApp('${esc(folioOficial)}')">📲 Enviar copia a mi WhatsApp</button>` +
+      `  <button type="button" class="secondary btn-sm" style="background:#fff;border:1px solid #17324d;color:#17324d" onclick="verFichaDesdeHistorial('${esc(folioOficial)}')">📄 Ver / Descargar Ficha PDF</button>` +
+      `</div>`;
     limpiar();
+    cargarMisReportes(false);
   } catch (e) {
     alert("Ocurrió un error al enviar el reporte al servidor: " + (e.message || "Error de red"));
   } finally {
     btn.disabled = false;
     btn.textContent = "ENVIAR REPORTE";
   }
+}
+
+// --- HISTORIAL DEL TRABAJADOR: MIS REPORTES ENVIADOS (OFFLINE + SYNC CORREGIDO) ---
+function obtenerHistorialLocal() {
+  try {
+    return JSON.parse(localStorage.getItem("historialMisReportesMYC") || "[]");
+  } catch (e) {
+    return [];
+  }
+}
+
+function guardarEnHistorialLocal(rep) {
+  if (!rep || !rep.id) return;
+  try {
+    const list = obtenerHistorialLocal();
+    const idx = list.findIndex(x => x.id === rep.id);
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], ...rep };
+    } else {
+      list.unshift(rep);
+    }
+    const cleanList = list.slice(0, 40);
+    localStorage.setItem("historialMisReportesMYC", JSON.stringify(cleanList));
+  } catch (e) {}
+}
+
+function toggleSeccionMisReportes() {
+  const wrap = $("misReportesWrap");
+  const btn = $("btnToggleMisReportes");
+  if (!wrap || !btn) return;
+  const oculta = wrap.classList.contains("hidden");
+  wrap.classList.toggle("hidden", !oculta);
+  btn.textContent = oculta ? "Ocultar Historial" : "Ver Historial";
+  if (oculta) {
+    cargarMisReportes(false);
+  }
+}
+
+async function cargarMisReportes(forzarOnline = false) {
+  const titular = ($("trabajadorNombre").value.trim() || localStorage.getItem("nombreTrabajadorTerreno") || "").trim();
+  const st = $("misReportesStatus");
+  const listCont = $("misReportesLista");
+  if (!listCont) return;
+
+  const locales = obtenerHistorialLocal();
+  if (locales.length && !ultimosMisReportes.length) {
+    ultimosMisReportes = locales;
+    renderizarMisReportes(ultimosMisReportes);
+  }
+
+  if (!titular) {
+    if (st) st.innerHTML = "Selecciona o guarda tu nombre arriba para sincronizar tu historial de reportes.";
+    return;
+  }
+
+  if (st) st.textContent = navigator.onLine ? "Sincronizando con el servidor..." : "Sin conexión: mostrando copias guardadas en este teléfono.";
+
+  if (navigator.onLine) {
+    try {
+      const resp = await fetch(API_URL + "?action=my_reports&worker=" + encodeURIComponent(titular));
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data && Array.isArray(data.reports)) {
+          ultimosMisReportes = data.reports;
+          localStorage.setItem("historialMisReportesMYC", JSON.stringify(data.reports.slice(0, 40)));
+          renderizarMisReportes(ultimosMisReportes);
+          if (st) st.innerHTML = `✓ <b>Sincronizado con central:</b> ${data.reports.length} reporte(s) encontrados. (Incluye correcciones de Logística)`;
+          return;
+        }
+      }
+    } catch (e) {}
+  }
+
+  if (locales.length) {
+    ultimosMisReportes = locales;
+    renderizarMisReportes(ultimosMisReportes);
+    if (st) st.textContent = `${locales.length} reporte(s) guardados en este teléfono (sin conexión actual).`;
+  } else {
+    if (st) st.textContent = "Aún no tienes reportes enviados registrados en este teléfono.";
+    listCont.innerHTML = "";
+  }
+}
+
+function renderizarMisReportes(lista) {
+  const listCont = $("misReportesLista");
+  if (!listCont) return;
+  if (!lista || !lista.length) {
+    listCont.innerHTML = `<div class="muted" style="font-size:12.5px;padding:8px 0">No hay reportes para mostrar.</div>`;
+    return;
+  }
+
+  listCont.innerHTML = lista.map((r, i) => {
+    const rec = r.recepcionCliente && (r.recepcionCliente.firmado || r.recepcionCliente.nombre) ? r.recepcionCliente : null;
+    const recBadge = rec && rec.firmado
+      ? `<span class="badge Terminado" style="font-size:11px">✍️ Firmado por Cliente: ${esc(rec.nombre || "Recibido")}</span>`
+      : `<span class="badge Pendiente" style="font-size:11px">⏳ Pendiente firma de cliente</span>`;
+    const avisoTxt = r.numeroAviso ? ` · <b>N° Aviso:</b> ${esc(r.numeroAviso)}` : "";
+    const integTxt = Array.isArray(r.integrantes) && r.integrantes.length ? ` · Cuadrilla: +${r.integrantes.length}` : "";
+    const fotosCount = Array.isArray(r.fotos) ? r.fotos.length : 0;
+
+    return `
+      <div class="my-rep-card">
+        <h4>
+          <span><span class="folio-tag">${esc(r.id)}</span> 📍 ${esc(r.lugar || "Sin lugar")}</span>
+          <span class="badge ${esc(String(r.estado || "Terminado").replace(/\s+/g, "-"))}">${esc(r.estado || "Terminado")}</span>
+        </h4>
+        <p><b>📅 Fecha:</b> ${esc(r.fechaInicio || "")} (${esc(r.horaInicio || "")} a ${esc(r.horaTermino || "")} hrs)${avisoTxt}${integTxt}</p>
+        <p style="white-space:pre-line"><b>🛠️ Trabajo:</b> ${esc(r.trabajo || "Sin descripción")}</p>
+        <div style="margin:5px 0">${recBadge} ${fotosCount > 0 ? `<span class="muted" style="font-size:11.5px">📷 ${fotosCount} foto(s)</span>` : ""}</div>
+        <div class="my-rep-actions">
+          <button type="button" class="success btn-sm" style="background:#16a34a" onclick="compartirReporteTrabajadorWhatsApp('${esc(r.id)}')">📲 Enviar a mi WhatsApp</button>
+          <button type="button" class="secondary btn-sm" style="background:#fff;border:1px solid #17324d;color:#17324d" onclick="verFichaDesdeHistorial('${esc(r.id)}')">📄 Ver / Descargar Ficha PDF</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function obtenerReporteHistorialPorId(folio) {
+  return ultimosMisReportes.find(x => x.id === folio) || obtenerHistorialLocal().find(x => x.id === folio) || null;
+}
+
+function compartirReporteTrabajadorWhatsApp(folio) {
+  const r = obtenerReporteHistorialPorId(folio);
+  if (!r) {
+    alert("No se encontró el reporte seleccionado.");
+    return;
+  }
+  const linkCliente = `${window.location.origin}${window.location.pathname}?recepcion=${encodeURIComponent(r.id)}`;
+  const avisoLine = r.numeroAviso ? `🔢 *N° de Aviso:* ${r.numeroAviso}\n` : "";
+  const msg =
+    `📋 *Comprobante de Reporte de Terreno - MYC SpA*\n` +
+    `• *Folio:* ${r.id}\n` +
+    avisoLine +
+    `• *Lugar / Plantel:* ${r.lugar}\n` +
+    `• *Fecha:* ${r.fechaInicio} (${r.horaInicio} a ${r.horaTermino} hrs)\n` +
+    `• *Responsable:* ${r.trabajador || "Operador MYC"}\n` +
+    `• *Estado:* ${r.estado || "Terminado"}\n` +
+    `• *Trabajo:* ${r.trabajo}\n\n` +
+    `✍️ *Enlace de Recepción y Ficha Oficial:* ${linkCliente}\n\n` +
+    `_Inversiones y Mantenimiento MYC SpA_`;
+
+  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, "_blank");
+}
+
+function verFichaDesdeHistorial(folio) {
+  const r = obtenerReporteHistorialPorId(folio);
+  if (!r) {
+    alert("No se encontró el reporte seleccionado.");
+    return;
+  }
+  imprimirFichaReporteObjeto(r);
 }
 
 // --- FIRMA DIGITAL EN PANTALLA (TERRENO Y VISTA CLIENTE) ---
@@ -1185,7 +1368,7 @@ function toggleRecepcionTerreno() {
 async function init() {
   $("hdrLogo").src = LOGO_MYC;
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js?v=20").then(reg => {
+    navigator.serviceWorker.register("sw.js?v=21").then(reg => {
       try { reg.update(); } catch (e) {}
     }).catch(() => {});
   }
@@ -1214,6 +1397,7 @@ async function init() {
   actualizarEstadoRed();
   await migrarPendientesAntiguos();
   await pend();
+  cargarMisReportes(false);
   sync();
 
   if (folioRec) {
@@ -1448,9 +1632,16 @@ async function enviar() {
     if (!navigator.onLine) throw new Error("offline");
     const res = await enviarReporteAlServidor(r);
     const folioOficial = (res && res.report && res.report.id) ? res.report.id : "";
+    guardarEnHistorialLocal(res && res.report ? res.report : r);
     $("status").className = "status ok";
-    $("status").innerHTML = `<strong>✓ Reporte ${esc(folioOficial)} recibido por recepción central.</strong> (${esc(r.lugar)} · ${fotosComprimidas.length} fotos)`;
+    $("status").innerHTML =
+      `<strong>✓ Reporte ${esc(folioOficial)} recibido por recepción central.</strong> (${esc(r.lugar)} · ${fotosComprimidas.length} fotos)<br>` +
+      `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">` +
+      `  <button type="button" class="success btn-sm" style="background:#16a34a" onclick="compartirReporteTrabajadorWhatsApp('${esc(folioOficial)}')">📲 Enviar copia a mi WhatsApp</button>` +
+      `  <button type="button" class="secondary btn-sm" style="background:#fff;border:1px solid #17324d;color:#17324d" onclick="verFichaDesdeHistorial('${esc(folioOficial)}')">📄 Ver / Descargar Ficha PDF</button>` +
+      `</div>`;
     limpiar();
+    cargarMisReportes(false);
   } catch (e) {
     await guardarPendiente(r);
     $("status").className = "status warn";
@@ -1538,6 +1729,7 @@ async function sync(manual = false) {
   if (enviados > 0) {
     $("status").className = "status ok";
     $("status").innerHTML = `<strong>✓ Se sincronizaron automáticamente ${enviados} reporte(s) pendiente(s) con la central.</strong>`;
+    cargarMisReportes(false);
   } else if (manual) {
     alert("Aún no se pudo sincronizar con el servidor" + (ultimoError ? " (" + ultimoError + ")" : "") + ". Los reportes siguen guardados de forma segura en el teléfono.");
   }
@@ -2920,6 +3112,11 @@ async function copiarLinkAprobacionCliente(idx) {
 
 function imprimirFicha(idx) {
   const r = ultimosReportesCargados[idx];
+  if (!r) return;
+  imprimirFichaReporteObjeto(r);
+}
+
+function imprimirFichaReporteObjeto(r) {
   if (!r) return;
   const baseHref = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "/");
   const hrs = calcularHorasTrabajo(r);
