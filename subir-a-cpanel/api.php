@@ -16,6 +16,7 @@ $uploadsDir = $baseDir . DIRECTORY_SEPARATOR . 'uploads';
 $dbFile = $dataDir . DIRECTORY_SEPARATOR . 'reportes.json';
 $notifyConfigFile = $dataDir . DIRECTORY_SEPARATOR . 'notificaciones.json';
 $workersFile = $dataDir . DIRECTORY_SEPARATOR . 'trabajadores.json';
+$lugaresFile = $dataDir . DIRECTORY_SEPARATOR . 'lugares.json';
 
 if (!is_dir($dataDir)) {
     mkdir($dataDir, 0755, true);
@@ -85,6 +86,40 @@ function getWorkersCatalog(string $workersFile, array $defaultWorkersCatalog): a
         return $defaultWorkersCatalog;
     }
     return array_values(array_unique(array_filter(array_map('trim', $decoded))));
+}
+
+function getLugaresCatalog(string $lugaresFile): array {
+    if (!file_exists($lugaresFile)) {
+        return [];
+    }
+    $decoded = json_decode((string)file_get_contents($lugaresFile), true);
+    if (!is_array($decoded) || empty($decoded)) {
+        return [];
+    }
+    return array_values(array_unique(array_filter(array_map('trim', $decoded))));
+}
+
+function registerNewLugares(string $lugaresFile, array $places): array {
+    $current = getLugaresCatalog($lugaresFile);
+    $lowerMap = [];
+    foreach ($current as $l) {
+        $lowerMap[mb_strtolower($l, 'UTF-8')] = $l;
+    }
+    $changed = false;
+    foreach ($places as $p) {
+        $clean = trim((string)$p);
+        if ($clean === '' || mb_strtolower($clean, 'UTF-8') === 'no indicado') continue;
+        $key = mb_strtolower($clean, 'UTF-8');
+        if (!isset($lowerMap[$key])) {
+            $current[] = $clean;
+            $lowerMap[$key] = $clean;
+            $changed = true;
+        }
+    }
+    if ($changed) {
+        @file_put_contents($lugaresFile, json_encode(array_values($current), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), LOCK_EX);
+    }
+    return $current;
 }
 
 function registerNewWorkers(string $workersFile, array $defaultWorkersCatalog, array $names): array {
@@ -624,6 +659,12 @@ if ($method === 'GET' && $action === 'workers_catalog') {
     exit;
 }
 
+if ($method === 'GET' && $action === 'lugares_catalog') {
+    $lugares = getLugaresCatalog($lugaresFile);
+    echo json_encode(['ok' => true, 'lugares' => $lugares], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 if ($method === 'GET' && $action === 'my_reports') {
     $worker = trim((string)($_GET['worker'] ?? ''));
     if ($worker === '') {
@@ -680,6 +721,20 @@ if ($method === 'GET' && $action === 'my_reports') {
     // Limitar a los últimos 40 reportes para agilidad en móvil
     $matched = array_slice($matched, 0, 40);
     echo json_encode(['ok' => true, 'reports' => $matched], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if ($method === 'POST' && $action === 'save_lugares_catalog') {
+    checkAdminPin();
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    if (isset($input['lugares']) && is_array($input['lugares'])) {
+        $clean = array_values(array_unique(array_filter(array_map('trim', $input['lugares']))));
+        file_put_contents($lugaresFile, json_encode($clean, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE), LOCK_EX);
+        echo json_encode(['ok' => true, 'lugares' => $clean], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+    http_response_code(400);
+    echo json_encode(['error' => 'Lista de lugares inválida']);
     exit;
 }
 
@@ -1598,6 +1653,10 @@ if ($method === 'POST') {
         : [];
     // Registrar automáticamente nuevos nombres (opción "Otro") en el catálogo de trabajadores
     registerNewWorkers($workersFile, $defaultWorkersCatalog, array_merge([$r['trabajador']], $r['integrantes']));
+    // Registrar automáticamente nuevos lugares en el catálogo de lugares
+    if (!empty($r['lugar'])) {
+        registerNewLugares($lugaresFile, [$r['lugar']]);
+    }
     if (isset($r['recepcionCliente']) && is_array($r['recepcionCliente'])) {
         if (empty($r['solicita']) && !empty($r['recepcionCliente']['nombre'])) {
             $r['solicita'] = trim((string)$r['recepcionCliente']['nombre']);

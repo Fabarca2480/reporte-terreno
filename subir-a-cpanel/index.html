@@ -137,9 +137,22 @@ footer a:hover{opacity:1}
 
       <div id="workerInputBox">
         <label>👷 ¿Quién genera el reporte? <span style="color:#dc2626">*</span></label>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <input id="trabajadorNombre" list="trabajadoresList" placeholder="Busca o escribe tu Nombre y Apellido (ej: CERDA)" style="flex:1;min-width:210px">
-          <button type="button" class="secondary" onclick="fijarTrabajador()">Guardar en mi teléfono</button>
+        <div class="row" style="gap:8px;margin-bottom:8px">
+          <div>
+            <select id="trabajadorSelect" onchange="seleccionarTrabajadorTitular(this.value)">
+              <option value="">— Seleccionar de la nómina —</option>
+              <option value="__MANUAL__">✍️ Ingreso manual (no estoy en el listado)...</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input id="trabajadorNombre" list="trabajadoresList" placeholder="O busca/escribe tu Nombre y Apellido (ej: CERDA)" style="flex:1;min-width:210px">
+            <button type="button" class="secondary" onclick="fijarTrabajador()">Guardar en mi teléfono</button>
+          </div>
+        </div>
+        <div style="margin-top:4px">
+          <label style="font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:12.5px;margin:0">
+            <input id="otroTrabajadorTitular" type="checkbox" style="width:auto" onchange="toggleOtroTrabajadorTitular()"> Ingreso manual (no estoy en el listado)
+          </label>
         </div>
         <datalist id="trabajadoresList"></datalist>
         <div class="muted" style="margin-top:5px">Lo seleccionas o escribes solo la 1ª vez y quedará fijo automáticamente en este teléfono.</div>
@@ -156,12 +169,12 @@ footer a:hover{opacity:1}
             </select>
           </div>
           <div>
-            <input id="integranteInput" list="trabajadoresList" placeholder="O busca escribiendo apellido/nombre..." onchange="if(trabajadoresCatalogo.includes(this.value.trim()))agregarIntegranteCuadrilla(true)">
+            <input id="integranteInput" list="trabajadoresList" placeholder="O busca escribiendo apellido/nombre..." onchange="if(this.value.trim())agregarIntegranteCuadrilla(true)">
           </div>
         </div>
         <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
           <label style="font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer;margin:0">
-            <input id="otroIntegrante" type="checkbox" style="width:auto" onchange="toggleOtroIntegrante()"> Otro integrante (no está en la lista)
+            <input id="otroIntegrante" type="checkbox" style="width:auto" onchange="toggleOtroIntegrante()"> Ingreso manual (no está en el listado)
           </label>
           <button type="button" class="secondary btn-sm" onclick="agregarIntegranteCuadrilla()">+ Agregar integrante a la cuadrilla</button>
         </div>
@@ -599,7 +612,7 @@ footer a:hover{opacity:1}
 <script>
 const LOGO_MYC = "data:image/jpeg;base64,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";
 
-const lugares=["G 26 REPRODUCCIÓN", "STUD TANTEHUE", "SE SITIO 9", "SE SITIO 3", "SE SITIO 4", "SE SITIO 1", "SE SITIO 2", "SE SITIO 7", "SE SITIO 5", "SE SITIO 6", "SE SITIO 8", "G 14 REPRODUCCIÓN", "G 22 REPRODUCCIÓN", "G 16 REPRODUCCIÓN", "G 15 REPRODUCCIÓN", "G 23 REPRODUCCIÓN", "G 10 REPRODUCCIÓN", "G 24 REPRODUCCIÓN", "G 20 REPRODUCCIÓN", "G 21 REPRODUCCIÓN", "G 17 REPRODUCCIÓN", "G 19 REPRODUCCIÓN", "G 18 REPRODUCCIÓN", "DV LA MINA", "DV LOS TATAS", "DV DIVISADERO", "DV LAS BRISAS", "DV POCILLAS", "DV DON SATA", "DV EL RETORNO", "DV CASTROL", "DV CONCEJALES", "DV PIEDRA DEL JOTE", "DV EL ALCALDE", "DV MR DIC", "DV LA NORIA", "DV PIEDRA DEL TRARO", "DV EL MONTE", "DV MAITENLAHUE", "DV EL YALI", "DV EL MILAGRO", "DV MANZO", "DV ELHUE", "DV CORNECHE", "DV EL TÓTEM", "ENG CHANCÓN 1", "ENG CHANCÓN 2", "ENG EL CARMEN", "ENG LOS GOMEROS", "ENG LA MARAVILLA", "ENG EL QUISCO", "ENG EL ALMENDRO", "ENG ESMERALDA", "ENG TOTIHUE", "ENG. LA LECHERIA", "ENG ARBOLEDA", "Sitio Don Charles", "SITIO RINCÓN DE ABRA", "Sitio La Leonera", "G 6 REPRODUCCIÓN", "G 25 REPRODUCCIÓN", "G 8 REPRODUCCIÓN", "G 5 REPRODUCCIÓN", "G 28 REPRODUCCIÓN", "G 12 REPRODUCCIÓN", "STUD RAMIRANA", "STUD SANTA ROSA", "COYA 2 REPRODUCCIÓN", "COYA 1 REPRODUCCIÓN", "TESTAJE", "G 3 REPRODUCCIÓN", "G 4 REPRODUCCIÓN", "G 9 REPRODUCCIÓN", "G 13", "Cuarentena Idahue", "DV EL MIRADOR", "DV El litre", "DV Rapel", "ENG LOS ALAMOS", "ENG EL ESTERO", "ENG HONORABLE", "ENG LA CAÑA", "ENG LA COPA", "ENG LA TOSCA", "ENG EL PEUMO", "ENG EL ESPINO", "DV LOS LLANOS", "DV LAS MURALLAS", "DV LOS CLONQUIS", "DV VARILLAS", "DV SAN MANUEL", "DV LOS CURUROS", "DV BARRANCAS", "DV EL CAPRICHO", "BIODIG. CORNECHE", "BIODIG. LA ESTRELLA", "BIODIG. LAS PALMAS GR.21", "BIODIG. PERALILLO", "BIODIG. POCILLAS", "BIODIG. RAMIRANA", "BIODIG. SANTA ROSA", "PL COMP. LA ESTRELLA", "PLANTA COMP TANTEHUE", "PLTA COMP MAITENLAHU", "PT. COMP. LA MANGA", "PT. COMP. LA MANGA 2", "PTA COMP VALDEBENITO", "PL TR RILES TANTEHUE", "PT. RILES LA ESTRELLA", "PT. RILES LA MANGA", "PT. RILES MAITENLAHUE", "PT. RILES PERALILLO", "PT. RILES POCILLAS", "PT. RILES RAMIRANA", "PT. RILES VALDEBENIT", "OF CENTRAL RGUA", "STT ARBOLEDA", "STT CASTILLO 6", "STT CASTILLO 8", "STT CHANCÓN 1", "STT CHANCÓN 2", "STT DON CHARLES", "STT EL ALMENDRO", "STT EL CARMEN", "STT EL QUISCO", "STT GOMEROS", "STT GR 9 LA HIGUERA", "STT LOICA ESPINO", "STT LOICA PEUMO", "STT LONGOVILO G14", "STT LONGOVILO G15", "STT LONGOVILO G16", "STT LONGOVILO G22", "STT RINCON DE ABRA", "STT TOTIHUE", "BIODIG. ESTRELLA 1", "BIODIG. PALMAS GR.21", "PT. RILES ESTRELLA", "PT. RILES MAITENLAH", "OCR"];
+let lugares=["G 26 REPRODUCCIÓN", "STUD TANTEHUE", "SE SITIO 9", "SE SITIO 3", "SE SITIO 4", "SE SITIO 1", "SE SITIO 2", "SE SITIO 7", "SE SITIO 5", "SE SITIO 6", "SE SITIO 8", "G 14 REPRODUCCIÓN", "G 22 REPRODUCCIÓN", "G 16 REPRODUCCIÓN", "G 15 REPRODUCCIÓN", "G 23 REPRODUCCIÓN", "G 10 REPRODUCCIÓN", "G 24 REPRODUCCIÓN", "G 20 REPRODUCCIÓN", "G 21 REPRODUCCIÓN", "G 17 REPRODUCCIÓN", "G 19 REPRODUCCIÓN", "G 18 REPRODUCCIÓN", "DV LA MINA", "DV LOS TATAS", "DV DIVISADERO", "DV LAS BRISAS", "DV POCILLAS", "DV DON SATA", "DV EL RETORNO", "DV CASTROL", "DV CONCEJALES", "DV PIEDRA DEL JOTE", "DV EL ALCALDE", "DV MR DIC", "DV LA NORIA", "DV PIEDRA DEL TRARO", "DV EL MONTE", "DV MAITENLAHUE", "DV EL YALI", "DV EL MILAGRO", "DV MANZO", "DV ELHUE", "DV CORNECHE", "DV EL TÓTEM", "ENG CHANCÓN 1", "ENG CHANCÓN 2", "ENG EL CARMEN", "ENG LOS GOMEROS", "ENG LA MARAVILLA", "ENG EL QUISCO", "ENG EL ALMENDRO", "ENG ESMERALDA", "ENG TOTIHUE", "ENG. LA LECHERIA", "ENG ARBOLEDA", "Sitio Don Charles", "SITIO RINCÓN DE ABRA", "Sitio La Leonera", "G 6 REPRODUCCIÓN", "G 25 REPRODUCCIÓN", "G 8 REPRODUCCIÓN", "G 5 REPRODUCCIÓN", "G 28 REPRODUCCIÓN", "G 12 REPRODUCCIÓN", "STUD RAMIRANA", "STUD SANTA ROSA", "COYA 2 REPRODUCCIÓN", "COYA 1 REPRODUCCIÓN", "TESTAJE", "G 3 REPRODUCCIÓN", "G 4 REPRODUCCIÓN", "G 9 REPRODUCCIÓN", "G 13", "Cuarentena Idahue", "DV EL MIRADOR", "DV El litre", "DV Rapel", "ENG LOS ALAMOS", "ENG EL ESTERO", "ENG HONORABLE", "ENG LA CAÑA", "ENG LA COPA", "ENG LA TOSCA", "ENG EL PEUMO", "ENG EL ESPINO", "DV LOS LLANOS", "DV LAS MURALLAS", "DV LOS CLONQUIS", "DV VARILLAS", "DV SAN MANUEL", "DV LOS CURUROS", "DV BARRANCAS", "DV EL CAPRICHO", "BIODIG. CORNECHE", "BIODIG. LA ESTRELLA", "BIODIG. LAS PALMAS GR.21", "BIODIG. PERALILLO", "BIODIG. POCILLAS", "BIODIG. RAMIRANA", "BIODIG. SANTA ROSA", "PL COMP. LA ESTRELLA", "PLANTA COMP TANTEHUE", "PLTA COMP MAITENLAHU", "PT. COMP. LA MANGA", "PT. COMP. LA MANGA 2", "PTA COMP VALDEBENITO", "PL TR RILES TANTEHUE", "PT. RILES LA ESTRELLA", "PT. RILES LA MANGA", "PT. RILES MAITENLAHUE", "PT. RILES PERALILLO", "PT. RILES POCILLAS", "PT. RILES RAMIRANA", "PT. RILES VALDEBENIT", "OF CENTRAL RGUA", "STT ARBOLEDA", "STT CASTILLO 6", "STT CASTILLO 8", "STT CHANCÓN 1", "STT CHANCÓN 2", "STT DON CHARLES", "STT EL ALMENDRO", "STT EL CARMEN", "STT EL QUISCO", "STT GOMEROS", "STT GR 9 LA HIGUERA", "STT LOICA ESPINO", "STT LOICA PEUMO", "STT LONGOVILO G14", "STT LONGOVILO G15", "STT LONGOVILO G16", "STT LONGOVILO G22", "STT RINCON DE ABRA", "STT TOTIHUE", "BIODIG. ESTRELLA 1", "BIODIG. PALMAS GR.21", "PT. RILES ESTRELLA", "PT. RILES MAITENLAH", "OCR"];
 
 // Nómina oficial de 42 trabajadores MYC SpA (cargada desde LISTADO TRABAJADORES_.xlsx)
 let trabajadoresCatalogo = [
@@ -759,14 +772,48 @@ function actualizarVistaTrabajador() {
   }
 }
 
+function seleccionarTrabajadorTitular(val) {
+  if (!val) return;
+  if (val === "__MANUAL__") {
+    if ($("otroTrabajadorTitular")) $("otroTrabajadorTitular").checked = true;
+    $("trabajadorNombre").value = "";
+    $("trabajadorNombre").placeholder = "Escribe tu Nombre y Apellido completo";
+    $("trabajadorNombre").focus();
+    return;
+  }
+  if ($("otroTrabajadorTitular")) $("otroTrabajadorTitular").checked = false;
+  $("trabajadorNombre").value = val;
+  $("trabajadorNombre").placeholder = "O busca/escribe tu Nombre y Apellido (ej: CERDA)";
+  if ($("trabajadorSelect")) $("trabajadorSelect").value = "";
+  fijarTrabajador();
+}
+
+function toggleOtroTrabajadorTitular() {
+  const manual = $("otroTrabajadorTitular") && $("otroTrabajadorTitular").checked;
+  if (manual) {
+    if ($("trabajadorSelect")) $("trabajadorSelect").value = "__MANUAL__";
+    $("trabajadorNombre").value = "";
+    $("trabajadorNombre").placeholder = "Escribe tu Nombre y Apellido completo";
+    $("trabajadorNombre").focus();
+  } else {
+    if ($("trabajadorSelect")) $("trabajadorSelect").value = "";
+    $("trabajadorNombre").placeholder = "O busca/escribe tu Nombre y Apellido (ej: CERDA)";
+  }
+}
+
 function fijarTrabajador() {
   const val = $("trabajadorNombre").value.trim();
   if (!val) {
-    alert("Escribe tu nombre y apellido primero.");
+    alert("Escribe o selecciona tu nombre y apellido primero.");
     $("trabajadorNombre").focus();
     return;
   }
   localStorage.setItem("nombreTrabajadorTerreno", val);
+  if (!trabajadoresCatalogo.includes(val)) {
+    trabajadoresCatalogo.push(val);
+    localStorage.setItem("catalogoTrabajadoresMYC", JSON.stringify(trabajadoresCatalogo));
+    poblarListasTrabajadores();
+  }
   actualizarVistaTrabajador();
   cargarMisReportes(false);
 }
@@ -774,6 +821,8 @@ function fijarTrabajador() {
 function cambiarTrabajador() {
   $("workerSavedBox").classList.add("hidden");
   $("workerInputBox").classList.remove("hidden");
+  if ($("trabajadorSelect")) $("trabajadorSelect").value = "";
+  if ($("otroTrabajadorTitular")) $("otroTrabajadorTitular").checked = false;
   $("trabajadorNombre").focus();
   $("trabajadorNombre").select();
 }
@@ -946,13 +995,49 @@ function dataUrlToBlob(dataUrl) {
 }
 
 // --- INICIALIZACIÓN ---
+function poblarLugares() {
+  if ($("lugaresList")) {
+    $("lugaresList").innerHTML = lugares.map(x => `<option value="${esc(x)}"></option>`).join("");
+  }
+}
+
+async function sincronizarCatalogoLugares() {
+  try {
+    const local = JSON.parse(localStorage.getItem("catalogoLugaresMYC") || "[]");
+    if (Array.isArray(local) && local.length) {
+      local.forEach(l => {
+        if (l && !lugares.includes(l)) lugares.push(l);
+      });
+      poblarLugares();
+    }
+    if (!navigator.onLine) return;
+    const resp = await fetch(API_URL + "?action=lugares_catalog");
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (data && Array.isArray(data.lugares) && data.lugares.length) {
+      data.lugares.forEach(l => {
+        if (l && !lugares.includes(l)) lugares.push(l);
+      });
+      localStorage.setItem("catalogoLugaresMYC", JSON.stringify(lugares));
+      poblarLugares();
+    }
+  } catch (e) {}
+}
+
 function poblarListasTrabajadores() {
   if ($("trabajadoresList")) {
     $("trabajadoresList").innerHTML = trabajadoresCatalogo.map(x => `<option value="${esc(x)}"></option>`).join("");
   }
+  if ($("trabajadorSelect")) {
+    $("trabajadorSelect").innerHTML =
+      `<option value="">— Seleccionar de la nómina (${trabajadoresCatalogo.length} trabajadores) —</option>` +
+      `<option value="__MANUAL__">✍️ Ingreso manual (no estoy en el listado)...</option>` +
+      trabajadoresCatalogo.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join("");
+  }
   if ($("integranteSelect")) {
     $("integranteSelect").innerHTML =
       `<option value="">— Seleccionar de la lista (${trabajadoresCatalogo.length} trabajadores) —</option>` +
+      `<option value="__OTRO__">✍️ Ingreso manual (no está en el listado)...</option>` +
       trabajadoresCatalogo.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join("");
   }
 }
@@ -982,6 +1067,12 @@ async function sincronizarCatalogoTrabajadores() {
 
 function seleccionarIntegranteDeLista(val) {
   if (!val) return;
+  if (val === "__OTRO__") {
+    $("otroIntegrante").checked = true;
+    toggleOtroIntegrante();
+    $("integranteSelect").value = "";
+    return;
+  }
   $("integranteInput").value = val;
   agregarIntegranteCuadrilla();
   $("integranteSelect").value = "";
@@ -999,13 +1090,7 @@ function agregarIntegranteCuadrilla(silencioso = false) {
   const esOtro = $("otroIntegrante").checked;
   const nombre = (esOtro ? $("otroIntegranteTxt").value : $("integranteInput").value).trim();
   if (!nombre) {
-    if (!silencioso) alert("Selecciona un trabajador de la lista desplegable o marca 'Otro integrante' para escribir su nombre.");
-    return false;
-  }
-  if (!esOtro && !trabajadoresCatalogo.includes(nombre)) {
-    if (!silencioso) {
-      alert("El trabajador escrito no está en la lista desplegable. Selecciónalo de la lista o marca la casilla 'Otro integrante'.");
-    }
+    if (!silencioso) alert("Selecciona un trabajador de la lista o escribe su nombre.");
     return false;
   }
   const titular = ($("trabajadorNombre").value.trim() || localStorage.getItem("nombreTrabajadorTerreno") || "").trim();
@@ -1368,7 +1453,7 @@ function toggleRecepcionTerreno() {
 async function init() {
   $("hdrLogo").src = LOGO_MYC;
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js?v=21").then(reg => {
+    navigator.serviceWorker.register("sw.js?v=22").then(reg => {
       try { reg.update(); } catch (e) {}
     }).catch(() => {});
   }
@@ -1382,7 +1467,8 @@ async function init() {
       $("installBtn").textContent = "Abrir en Chrome";
     }
   }
-  $("lugaresList").innerHTML = lugares.map(x => `<option value="${esc(x)}"></option>`).join("");
+  poblarLugares();
+  sincronizarCatalogoLugares();
   poblarListasTrabajadores();
   sincronizarCatalogoTrabajadores();
   inicializarCanvasFirma("canvasFirmaTerreno");
@@ -1473,6 +1559,11 @@ function build() {
     throw Error("Ingresa o selecciona tu Nombre y Apellido en '¿Quién genera el reporte?'. Quedará guardado en tu teléfono para los próximos envíos.");
   }
   localStorage.setItem("nombreTrabajadorTerreno", nombreTrab);
+  if (!trabajadoresCatalogo.includes(nombreTrab)) {
+    trabajadoresCatalogo.push(nombreTrab);
+    localStorage.setItem("catalogoTrabajadoresMYC", JSON.stringify(trabajadoresCatalogo));
+    poblarListasTrabajadores();
+  }
   actualizarVistaTrabajador();
 
   // Si escribió o seleccionó un integrante pero olvidó pulsar "+ Agregar integrante", lo agregamos automáticamente
@@ -1487,7 +1578,11 @@ function build() {
   const rx = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
   if (!lugar) throw Error("Escribe o selecciona un lugar, o marca OTRO LUGAR.");
-  if (!otro && !lugares.includes(lugar)) throw Error("El lugar escrito no está en el catálogo. Selecciónalo de la lista o marca 'Otro lugar'.");
+  if (!otro && !lugares.includes(lugar)) {
+    lugares.push(lugar);
+    localStorage.setItem("catalogoLugaresMYC", JSON.stringify(lugares));
+    poblarLugares();
+  }
   if (!$("trabajo").value.trim()) throw Error("Ingresa la descripción del trabajo realizado.");
   if (!rx.test($("hi").value) || !rx.test($("ht").value)) throw Error("Ingresa la hora como HH:MM, por ejemplo 08:30.");
 
