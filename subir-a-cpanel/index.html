@@ -203,9 +203,14 @@ footer a:hover{opacity:1}
           </div>
         </div>
         <div>
-          <label>🔢 N° de Aviso Cliente <span class="muted">(opcional)</span></label>
-          <input id="numeroAviso" placeholder="Ej: 10458920 (si el cliente entregó N° de aviso)" oninput="if($('recNumeroAviso'))$('recNumeroAviso').value=this.value">
-          <div class="muted" style="margin-top:4px">Número de aviso u orden entregada por el cliente.</div>
+          <label>🚗 Patente del vehículo <span class="muted">(opcional)</span></label>
+          <input id="patente" placeholder="Ej: ABCD-12 o AB-1234" style="text-transform:uppercase" maxlength="10" oninput="this.value=this.value.toUpperCase();try{localStorage.setItem('patenteVehiculoTerreno',this.value.trim())}catch(e){}">
+          <div class="muted" style="margin-top:4px">Patente de la camioneta o móvil en terreno.</div>
+          <div style="margin-top:9px">
+            <label>🔢 N° de Aviso Cliente <span class="muted">(opcional)</span></label>
+            <input id="numeroAviso" placeholder="Ej: 10458920 (si el cliente entregó N° de aviso)" oninput="if($('recNumeroAviso'))$('recNumeroAviso').value=this.value">
+            <div class="muted" style="margin-top:4px">Número de aviso u orden entregada por el cliente.</div>
+          </div>
         </div>
       </div>
     </div>
@@ -496,8 +501,15 @@ footer a:hover{opacity:1}
           <div class="metric"><b id="mt">0</b>Total</div>
           <div class="metric"><b id="mh">0</b>Hoy</div>
           <div class="metric"><b id="mp">0</b>En proceso</div>
-          <div class="metric"><b id="mpe">0</b>Pendientes</div>
+          <div class="metric"><b id="mpe">0</b>Pendientes trab.</div>
           <div class="metric alert-metric" title="Trabajos fuera de horario (>17:30 / <08:00) o Sáb/Dom/Festivo"><b id="mext">0</b>🚨 Extra / Emerg.</div>
+        </div>
+        <div class="grid" style="margin-top:8px">
+          <div class="metric" style="background:#fffbeb;border:1px solid #fde68a;color:#92400e" title="Reportes aún sin procesar ni cotizar"><b id="mGestPend" style="color:#b45309">0</b>⏳ Pendientes</div>
+          <div class="metric" style="background:#e0f2fe;border:1px solid #bae6fd;color:#0369a1" title="Reportes revisados y procesados"><b id="mGestProc" style="color:#0284c7">0</b>⚙️ Procesados</div>
+          <div class="metric" style="background:#ede9fe;border:1px solid #ddd6fe;color:#6d28d9" title="Reportes cotizados al cliente"><b id="mGestCot" style="color:#7c3aed">0</b>📋 Cotizados</div>
+          <div class="metric" style="background:#dcfce7;border:1px solid #bbf7d0;color:#15803d" title="Reportes cobrados o facturados"><b id="mGestCob" style="color:#16a34a">0</b>💰 Cobrados</div>
+          <div class="metric" style="background:#f1f5f9;border:1px solid #cbd5e1;color:#334155" title="Reportes con patente de vehículo"><b id="mPatentes" style="color:#0f172a">0</b>🚗 Con Patente</div>
         </div>
       </div>
 
@@ -541,7 +553,10 @@ footer a:hover{opacity:1}
       </div>
 
       <div class="card">
-        <label>Buscar y Filtrar</label>
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px">
+          <label style="margin:0">Buscar y Filtrar</label>
+          <button type="button" class="btn btn-sm secondary" style="background:#fef3c7; color:#92400e; font-weight:700; border:1px solid #f59e0b; padding:5px 12px; font-size:12px; border-radius:6px; cursor:pointer;" onclick="recuperarReportesPerdidos()" title="Rastrea automáticamente los reportes anteriores en los buzones de notificación de cPanel y los reincorpora a la lista">🔄 Rescatar Reportes Anteriores</button>
+        </div>
         <input id="q" placeholder="Folio (ej: RT-0001), lugar, trabajador o trabajo">
         <div class="row" style="margin-top:10px">
           <div><label>Desde</label><input id="desde" type="date"></div>
@@ -549,14 +564,27 @@ footer a:hover{opacity:1}
         </div>
         <div class="row" style="margin-top:10px">
           <div>
-            <label>Estado</label>
-            <select id="est">
-              <option value="">Todos</option>
+            <label>Estado de Trabajo</label>
+            <select id="est" onchange="cargar()">
+              <option value="">Todos los estados</option>
               <option>Terminado</option>
               <option>En proceso</option>
               <option>Pendiente</option>
             </select>
           </div>
+          <div>
+            <label>💼 Estado Gestión / Cobranza</label>
+            <select id="filtroGestion" onchange="cargar()">
+              <option value="">Todos los estados de gestión</option>
+              <option value="SIN_COBRAR">⏳ Sin Cobrar (Pendientes, Procesados y Cotizados)</option>
+              <option value="Pendiente">🔘 Solo Pendientes</option>
+              <option value="Procesado">⚙️ Solo Procesados</option>
+              <option value="Cotizado">📋 Solo Cotizados</option>
+              <option value="Cobrado">💰 Solo Cobrados</option>
+            </select>
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px">
           <div>
             <label>✍️ Aprobación / Recepción Cliente</label>
             <select id="filtroRecepcion" onchange="cargar()">
@@ -566,16 +594,16 @@ footer a:hover{opacity:1}
               <option value="FIRMADA">✅ Aprobados / Firmados por el Cliente</option>
             </select>
           </div>
-        </div>
-        <div style="margin-top:10px">
-          <label>🔒 Control Horario / Pago (Solo Logística)</label>
-          <select id="filtroHorario" onchange="cargar()">
-            <option value="">Todos los horarios</option>
-            <option value="MARCADOR">🚩 Con Marcador (>17:30 / Sáb-Dom-Festivo / Recargo)</option>
-            <option value="EMERGENCIA">🚨 Solo Pago Emergencia</option>
-            <option value="HORA_EXTRA">⏰ Solo Pago Hora Extra</option>
-            <option value="NORMAL">✅ Solo Horario Habitual</option>
-          </select>
+          <div>
+            <label>🔒 Control Horario / Pago (Solo Logística)</label>
+            <select id="filtroHorario" onchange="cargar()">
+              <option value="">Todos los horarios</option>
+              <option value="MARCADOR">🚩 Con Marcador (>17:30 / Sáb-Dom-Festivo / Recargo)</option>
+              <option value="EMERGENCIA">🚨 Solo Pago Emergencia</option>
+              <option value="HORA_EXTRA">⏰ Solo Pago Hora Extra</option>
+              <option value="NORMAL">✅ Solo Horario Habitual</option>
+            </select>
+          </div>
         </div>
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
           <button class="primary" style="flex:1;min-width:180px" onclick="cargar()">🔄 ACTUALIZAR LISTA</button>
@@ -1311,6 +1339,7 @@ function renderizarMisReportes(lista) {
       ? `<span class="badge Terminado" style="font-size:11px">✍️ Firmado por Cliente: ${esc(rec.nombre || "Recibido")}</span>`
       : `<span class="badge Pendiente" style="font-size:11px">⏳ Pendiente firma de cliente</span>`;
     const avisoTxt = r.numeroAviso ? ` · <b>N° Aviso:</b> ${esc(r.numeroAviso)}` : "";
+    const patenteTxt = r.patente ? ` · <b>🚗 Patente:</b> ${esc(r.patente)}` : "";
     const integTxt = Array.isArray(r.integrantes) && r.integrantes.length ? ` · Cuadrilla: +${r.integrantes.length}` : "";
     const fotosCount = Array.isArray(r.fotos) ? r.fotos.length : 0;
 
@@ -1320,7 +1349,7 @@ function renderizarMisReportes(lista) {
           <span><span class="folio-tag">${esc(r.id)}</span> 📍 ${esc(r.lugar || "Sin lugar")}</span>
           <span class="badge ${esc(String(r.estado || "Terminado").replace(/\s+/g, "-"))}">${esc(r.estado || "Terminado")}</span>
         </h4>
-        <p><b>📅 Fecha:</b> ${esc(r.fechaInicio || "")} (${esc(r.horaInicio || "")} a ${esc(r.horaTermino || "")} hrs)${avisoTxt}${integTxt}</p>
+        <p><b>📅 Fecha:</b> ${esc(r.fechaInicio || "")} (${esc(r.horaInicio || "")} a ${esc(r.horaTermino || "")} hrs)${avisoTxt}${patenteTxt}${integTxt}</p>
         <p style="white-space:pre-line"><b>🛠️ Trabajo:</b> ${esc(r.trabajo || "Sin descripción")}</p>
         <div style="margin:5px 0">${recBadge} ${fotosCount > 0 ? `<span class="muted" style="font-size:11.5px">📷 ${fotosCount} foto(s)</span>` : ""}</div>
         <div class="my-rep-actions">
@@ -1344,10 +1373,12 @@ function compartirReporteTrabajadorWhatsApp(folio) {
   }
   const linkCliente = `${window.location.origin}${window.location.pathname}?recepcion=${encodeURIComponent(r.id)}`;
   const avisoLine = r.numeroAviso ? `🔢 *N° de Aviso:* ${r.numeroAviso}\n` : "";
+  const patenteLine = r.patente ? `🚗 *Vehículo / Patente:* ${r.patente}\n` : "";
   const msg =
     `📋 *Comprobante de Reporte de Terreno - MYC SpA*\n` +
     `• *Folio:* ${r.id}\n` +
     avisoLine +
+    patenteLine +
     `• *Lugar / Plantel:* ${r.lugar}\n` +
     `• *Fecha:* ${r.fechaInicio} (${r.horaInicio} a ${r.horaTermino} hrs)\n` +
     `• *Responsable:* ${r.trabajador || "Operador MYC"}\n` +
@@ -1448,8 +1479,10 @@ function toggleRecepcionTerreno() {
 
 async function init() {
   $("hdrLogo").src = LOGO_MYC;
+  const savedPat = localStorage.getItem("patenteVehiculoTerreno");
+  if (savedPat && $("patente")) $("patente").value = savedPat;
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js?v=23").then(reg => {
+    navigator.serviceWorker.register("sw.js?v=24").then(reg => {
       try { reg.update(); } catch (e) {}
     }).catch(() => {});
   }
@@ -1606,11 +1639,17 @@ function build() {
   const cantPersonas = 1 + integrantesCuadrillaActual.length;
   if ($("personas")) $("personas").value = String(cantPersonas);
   const numeroAviso = (($("numeroAviso") ? $("numeroAviso").value : "") || ($("recNumeroAviso") ? $("recNumeroAviso").value : "")).trim();
+  const patente = ($("patente") ? $("patente").value.trim().toUpperCase() : "");
+  if (patente) {
+    try { localStorage.setItem("patenteVehiculoTerreno", patente); } catch (e) {}
+  }
   const uid = "UID-" + Date.now() + "-" + Math.random().toString(16).slice(2, 8);
   return {
     id: uid,
     clientUid: uid,
     trabajador: nombreTrab,
+    patente,
+    estadoGestion: "Pendiente",
     integrantes: [...integrantesCuadrillaActual],
     numeroAviso,
     solicita: recepcionCliente ? recepcionCliente.nombre : "",
@@ -2061,10 +2100,16 @@ async function cargar() {
     });
     primerCargaCompleta = true;
 
-    // Filtro interno de horario y aprobación de cliente (exclusivos de Logística)
+    // Filtro interno de horario, aprobación de cliente y gestión/cobranza (exclusivos de Logística)
     const filtroHor = $("filtroHorario") ? $("filtroHorario").value : "";
     const filtroRec = $("filtroRecepcion") ? $("filtroRecepcion").value : "";
+    const filtroGest = $("filtroGestion") ? $("filtroGestion").value : "";
     ultimosReportesCargados = todosRecibidos.filter(r => {
+      if (filtroGest) {
+        const gest = r.estadoGestion || "Pendiente";
+        if (filtroGest === "SIN_COBRAR" && gest === "Cobrado") return false;
+        if (filtroGest !== "SIN_COBRAR" && gest !== filtroGest) return false;
+      }
       if (filtroHor) {
         const info = analizarHorarioLogistica(r);
         if (filtroHor === "MARCADOR" && !info.tieneMarcador) return false;
@@ -2092,6 +2137,11 @@ async function cargar() {
     if ($("mext")) {
       $("mext").textContent = ultimosReportesCargados.filter(r => analizarHorarioLogistica(r).tieneMarcador).length;
     }
+    if ($("mGestPend")) $("mGestPend").textContent = ultimosReportesCargados.filter(r => (r.estadoGestion || "Pendiente") === "Pendiente").length;
+    if ($("mGestProc")) $("mGestProc").textContent = ultimosReportesCargados.filter(r => r.estadoGestion === "Procesado").length;
+    if ($("mGestCot")) $("mGestCot").textContent = ultimosReportesCargados.filter(r => r.estadoGestion === "Cotizado").length;
+    if ($("mGestCob")) $("mGestCob").textContent = ultimosReportesCargados.filter(r => r.estadoGestion === "Cobrado").length;
+    if ($("mPatentes")) $("mPatentes").textContent = ultimosReportesCargados.filter(r => Boolean(r.patente && r.patente.trim())).length;
 
     $("lista").innerHTML = ultimosReportesCargados.length
       ? ultimosReportesCargados
@@ -2117,6 +2167,30 @@ async function cargar() {
             const badgeAviso = r.numeroAviso
               ? `<span class="badge" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d">🔢 Aviso N° ${esc(r.numeroAviso)}</span>`
               : "";
+            const eg = r.estadoGestion || "Pendiente";
+            let badgeGestHtml = "";
+            if (eg === "Cobrado") {
+              badgeGestHtml = `<span class="badge" style="background:#dcfce7;color:#15803d;border:1px solid #86efac;font-weight:800">💰 Cobrado</span>`;
+            } else if (eg === "Cotizado") {
+              badgeGestHtml = `<span class="badge" style="background:#ede9fe;color:#6d28d9;border:1px solid #c4b5fd;font-weight:800">📋 Cotizado</span>`;
+            } else if (eg === "Procesado") {
+              badgeGestHtml = `<span class="badge" style="background:#e0f2fe;color:#0369a1;border:1px solid #7dd3fc;font-weight:800">⚙️ Procesado</span>`;
+            } else {
+              badgeGestHtml = `<span class="badge" style="background:#fffbeb;color:#92400e;border:1px solid #fde68a;font-weight:700">⏳ Por procesar</span>`;
+            }
+
+            const gestionBarHtml = `
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:9px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin:8px 0">
+                <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+                  <span style="font-size:12.5px;font-weight:700;color:#334155">💼 Gestión / Cobro:</span>
+                  ${badgeGestHtml}
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  <button type="button" class="btn-sm" style="cursor:pointer;border-radius:7px;padding:5px 11px;font-size:12px;${eg === 'Procesado' ? 'background:#0284c7;color:#fff;font-weight:800;border:1px solid #0369a1' : 'background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd'}" onclick="cambiarEstadoGestion('${esc(r.id)}', 'Procesado', this)" title="${eg === 'Procesado' ? 'Pulsar para volver a Pendiente' : 'Marcar como Procesado'}">⚙️ Procesado</button>
+                  <button type="button" class="btn-sm" style="cursor:pointer;border-radius:7px;padding:5px 11px;font-size:12px;${eg === 'Cotizado' ? 'background:#7c3aed;color:#fff;font-weight:800;border:1px solid #6d28d9' : 'background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe'}" onclick="cambiarEstadoGestion('${esc(r.id)}', 'Cotizado', this)" title="${eg === 'Cotizado' ? 'Pulsar para volver a Pendiente' : 'Marcar como Cotizado'}">📋 Cotizado</button>
+                  <button type="button" class="btn-sm" style="cursor:pointer;border-radius:7px;padding:5px 11px;font-size:12px;${eg === 'Cobrado' ? 'background:#16a34a;color:#fff;font-weight:800;border:1px solid #15803d' : 'background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0'}" onclick="cambiarEstadoGestion('${esc(r.id)}', 'Cobrado', this)" title="${eg === 'Cobrado' ? 'Pulsar para volver a Pendiente' : 'Marcar como Cobrado'}">💰 Cobrado</button>
+                </div>
+              </div>`;
             const jornadasHtml = (r.esUnificado && Array.isArray(r.jornadasUnificadas) && r.jornadasUnificadas.length > 1)
               ? `<div class="sublist" style="background:#eef2ff;border:1px solid #c7d2fe"><b>📅 Detalle de Jornadas / Grupos Unificados (${r.jornadasUnificadas.length}):</b><br>` +
                 r.jornadasUnificadas.map(j => {
@@ -2161,9 +2235,13 @@ async function cargar() {
                   ${badgeAviso}
                   <span>📍 ${esc(r.lugar)}</span>
                 </label>
-                <span class="badge ${esc(estClass)}">${esc(r.estado)}</span>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                  ${badgeGestHtml}
+                  <span class="badge ${esc(estClass)}">${esc(r.estado)}</span>
+                </div>
               </h3>
-              <p><b>👷 Generado por:</b> ${esc(r.trabajador || "No indicado")}${integrantesTxt} · <b>Total cuadrilla:</b> ${esc(r.personas)} pers. · <b>Duración total:</b> ${hrs} hrs${r.numeroAviso ? ` · <b>🔢 N° Aviso:</b> ${esc(r.numeroAviso)}` : ""}${r.solicita ? ` · <b>Solicita:</b> ${esc(r.solicita)}` : ""}</p>
+              <p><b>👷 Generado por:</b> ${esc(r.trabajador || "No indicado")}${integrantesTxt} · <b>Total cuadrilla:</b> ${esc(r.personas)} pers. · <b>Duración total:</b> ${hrs} hrs${r.numeroAviso ? ` · <b>🔢 N° Aviso:</b> ${esc(r.numeroAviso)}` : ""}${r.patente ? ` · <b>🚗 Patente:</b> <span style="font-family:monospace;background:#f1f5f9;padding:1px 6px;border-radius:4px;border:1px solid #cbd5e1;font-weight:700;color:#0f172a">${esc(r.patente)}</span>` : ""}${r.solicita ? ` · <b>Solicita:</b> ${esc(r.solicita)}` : ""}</p>
+              ${gestionBarHtml}
               <p><b>📅 Fecha:</b> ${esc(r.fechaInicio)} (${esc(infoHor.nombreDia)}) al ${esc(r.fechaTermino || r.fechaInicio)} · <b>🕒 Horario:</b> ${esc(r.horaInicio)}–${esc(r.horaTermino)}</p>
               ${recCliBadge}
               <div class="log-internal-box ${boxClass}" title="Información confidencial exclusiva de Logística (no visible para trabajador ni cliente)">
@@ -2294,6 +2372,21 @@ async function cargar() {
                 </div>
                 <div class="row" style="margin-top:8px">
                   <div>
+                    <label>🚗 Patente del vehículo</label>
+                    <input id="editPatente-${idx}" placeholder="Ej: ABCD-12" value="${esc(r.patente || "")}" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+                  </div>
+                  <div>
+                    <label>💼 Estado de Gestión / Cobro</label>
+                    <select id="editGest-${idx}">
+                      <option value="Pendiente" ${eg === "Pendiente" ? "selected" : ""}>⏳ Pendiente (Por procesar)</option>
+                      <option value="Procesado" ${eg === "Procesado" ? "selected" : ""}>⚙️ Procesado</option>
+                      <option value="Cotizado" ${eg === "Cotizado" ? "selected" : ""}>📋 Cotizado</option>
+                      <option value="Cobrado" ${eg === "Cobrado" ? "selected" : ""}>💰 Cobrado</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="row" style="margin-top:8px">
+                  <div>
                     <label>Solicita (Mandante / Supervisor Cliente)</label>
                     <input id="editSol-${idx}" placeholder="Ej: MARCELO YAÑEZ" value="${esc(r.solicita || "")}">
                   </div>
@@ -2335,6 +2428,38 @@ async function cargar() {
       : "No hay reportes para los filtros seleccionados.";
   } catch (e) {
     $("lista").innerHTML = "Recepción central no disponible en este momento.";
+  }
+}
+
+async function cambiarEstadoGestion(id, nuevoEstado, btn) {
+  const pin = sessionStorage.getItem("adminPinTerreno") || "";
+  if (!pin) {
+    abrirLogistica();
+    return;
+  }
+  const rep = ultimosReportesCargados.find(x => x.id === id);
+  const estadoActual = (rep && rep.estadoGestion) || "Pendiente";
+  const estadoFinal = estadoActual === nuevoEstado ? "Pendiente" : nuevoEstado;
+
+  if (btn) btn.disabled = true;
+
+  try {
+    const resp = await fetch(API_URL + "?action=update_gestion", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Pin": pin
+      },
+      body: JSON.stringify({ id, estadoGestion: estadoFinal })
+    });
+    if (!resp.ok) throw new Error("Error en servidor al actualizar estado");
+    if (rep) {
+      rep.estadoGestion = estadoFinal;
+    }
+    await cargar();
+  } catch (e) {
+    alert("No se pudo actualizar el estado de gestión: " + (e.message || "Error"));
+    if (btn) btn.disabled = false;
   }
 }
 
@@ -2447,6 +2572,8 @@ async function guardarEdicion(id, idx) {
   const trabajador = $("editTrab-" + idx).value.trim();
   const numeroAviso = $("editAviso-" + idx) ? $("editAviso-" + idx).value.trim() : "";
   const solicita = $("editSol-" + idx).value.trim();
+  const patente = $("editPatente-" + idx) ? $("editPatente-" + idx).value.trim().toUpperCase() : "";
+  const estadoGestion = $("editGest-" + idx) ? $("editGest-" + idx).value : "Pendiente";
   const integrantes = ($("editInt-" + idx) ? $("editInt-" + idx).value : "")
     .split(",")
     .map(s => s.trim())
@@ -2489,6 +2616,8 @@ async function guardarEdicion(id, idx) {
         integrantes,
         numeroAviso,
         solicita,
+        patente,
+        estadoGestion,
         trabajo,
         materiales,
         maquinaria,
@@ -2576,6 +2705,22 @@ async function unificarSeleccionados() {
     await cargar();
   } catch (e) {
     alert("No se pudieron unificar los reportes seleccionados.");
+  }
+}
+
+
+async function recuperarReportesPerdidos() {
+  const pin = sessionStorage.getItem("adminPinTerreno") || "";
+  if (!confirm("¿Deseas rastrear y restaurar automáticamente todos los reportes anteriores desde los buzones de notificación del servidor?")) return;
+  try {
+    const resp = await fetch(API_URL + "?action=recover_lost_reports", {
+      headers: { "X-Admin-Pin": pin }
+    });
+    const data = await resp.json();
+    alert(data.message || "Operación completada.");
+    await cargar();
+  } catch (e) {
+    alert("Error al intentar recuperar reportes: " + e.message);
   }
 }
 
@@ -3323,8 +3468,8 @@ function imprimirFichaReporteObjeto(r) {
     <th>Fecha Término</th><td>${esc(r.fechaTermino || r.fechaInicio)} (${esc(r.horaTermino)} hrs)</td>
   </tr>
   <tr>
-    <th>Personas Cuadrilla</th><td>${esc(r.personas)} persona(s) (${hrs} hrs trabajadas)</td>
-    <th>Horas-Hombre</th><td>${Math.round(hrs * Number(r.personas || 1) * 100) / 100} HH</td>
+    <th>Personas Cuadrilla</th><td>${esc(r.personas)} persona(s) (${hrs} hrs trabajadas) · <b>${Math.round(hrs * Number(r.personas || 1) * 100) / 100} HH</b></td>
+    <th>Vehículo / Patente</th><td>${r.patente ? `<b style="font-size:13.5px;color:#17324d">🚗 ${esc(r.patente)}</b>` : "—"}</td>
   </tr>
 </table>
 <div class="sec">
@@ -3743,6 +3888,8 @@ function generarDescargaXlsx(reportes, nombreArchivo) {
       [],
       [
         { v: "Folio", s: 1 },
+        { v: "Patente Vehículo", s: 1 },
+        { v: "Estado Gestión / Cobro", s: 1 },
         { v: "N° Aviso Cliente", s: 1 },
         { v: "Fecha Inicio", s: 1 },
         { v: "Día", s: 1 },
@@ -3772,6 +3919,8 @@ function generarDescargaXlsx(reportes, nombreArchivo) {
       const maq = (r.maquinaria || []).map(m => `${m.cantidad} ${m.unidad} ${m.descripcion}`).join(" | ");
       resRows.push([
         { v: r.id || "", s: 6 },
+        { v: r.patente || "—", s: 3 },
+        { v: r.estadoGestion || "Pendiente", s: 3 },
         { v: r.numeroAviso || "—", s: 3 },
         { v: r.fechaInicio || "", s: 3 },
         { v: infoHor.nombreDia || "", s: 3 },

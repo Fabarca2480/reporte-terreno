@@ -646,6 +646,172 @@ function checkAdminPin(): void {
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $action = $_GET['action'] ?? '';
 
+if ($method === 'GET' && $action === 'recover_lost_reports') {
+    checkAdminPin();
+    $home = getCpanelHomeDir();
+
+    // 1. Leer reportes actuales para no duplicar
+    $currentReports = readReports($dbFile);
+    $existingIds = [];
+    foreach ($currentReports as $cr) {
+        if (!empty($cr['id'])) {
+            $existingIds[$cr['id']] = true;
+        }
+        if (!empty($cr['reportesOriginalesBackup']) && is_array($cr['reportesOriginalesBackup'])) {
+            foreach ($cr['reportesOriginalesBackup'] as $subR) {
+                if (!empty($subR['id'])) {
+                    $existingIds[$subR['id']] = true;
+                }
+            }
+        }
+    }
+
+    // 2. Buscar correos de notificación en los buzones de cPanel
+    $mailDirs = glob($home . '/mail/mycmantencion.cl/*/.notificacion reports/{new,cur}/*', GLOB_BRACE) ?: [];
+    // También buscar en carpetas principales si no hay subcarpeta
+    if (empty($mailDirs)) {
+        $mailDirs = glob($home . '/mail/mycmantencion.cl/*/{new,cur}/*', GLOB_BRACE) ?: [];
+    }
+
+    $recovered = [];
+
+    foreach ($mailDirs as $mailFile) {
+        if (!is_file($mailFile)) continue;
+        $content = file_get_contents($mailFile);
+        if (!$content || stripos($content, 'Reporte de Terreno') === false) continue;
+
+        // Extraer Folio
+        $folio = '';
+        if (preg_match('/Folio\s+(RT-[A-Za-z0-9\-]+)/i', $content, $mFolio)) {
+            $folio = trim($mFolio[1]);
+        } elseif (preg_match('/\[(?:NORMAL|HORA EXTRA|EMERGENCIA)\]\s+(RT-[A-Za-z0-9\-]+)/i', $content, $mFolio2)) {
+            $folio = trim($mFolio2[1]);
+        }
+
+        if (!$folio || isset($existingIds[$folio])) {
+            continue;
+        }
+
+        // Lugar
+        $lugar = '';
+        if (preg_match('/Lugar\s*\/\s*Plantel<\/strong>\s*<\/td>\s*<td[^>]*>\s*<strong>(.*?)<\/strong>/is', $content, $mLug)) {
+            $lugar = trim(strip_tags($mLug[1]));
+        }
+
+        // Aviso
+        $aviso = '';
+        if (preg_match('/N° de Aviso Cliente<\/strong>\s*<\/td>\s*<td[^>]*>.*?<strong>(.*?)<\/strong>/is', $content, $mAvi)) {
+            $aviso = trim(strip_tags($mAvi[1]));
+        }
+
+        // Trabajador
+        $trabajador = '';
+        if (preg_match('/Generado por \/ Cuadrilla<\/strong>\s*<\/td>\s*<td[^>]*>\s*👷\s*([^(<]+)/i', $content, $mTrab)) {
+            $trabajador = trim($mTrab[1]);
+        }
+
+        // Personas
+        $personas = '1';
+        if (preg_match('/\((\d+)\s*pers\.\s*en cuadrilla\)/i', $content, $mPers)) {
+            $personas = trim($mPers[1]);
+        }
+
+        // Integrantes
+        $integrantes = [];
+        if (preg_match('/Integrantes cuadrilla:<\/strong>\s*([^<]+)/i', $content, $mInteg)) {
+            $integrantes = array_values(array_filter(array_map('trim', explode(',', $mInteg[1]))));
+        }
+
+        // Fecha
+        $fechaIni = '';
+        if (preg_match('/Fecha y Día<\/strong>\s*<\/td>\s*<td[^>]*>\s*(\d{4}-\d{2}-\d{2})/i', $content, $mFec)) {
+            $fechaIni = $mFec[1];
+        }
+        $fechaTer = $fechaIni;
+        if (preg_match('/al\s*(\d{4}-\d{2}-\d{2})/i', $content, $mFecT)) {
+            $fechaTer = $mFecT[1];
+        }
+
+        // Horario
+        $horaIni = '08:00';
+        $horaTer = '17:00';
+        if (preg_match('/Horario<\/strong>\s*<\/td>\s*<td[^>]*>\s*(\d{1,2}:\d{2})\s*a\s*(\d{1,2}:\d{2})/i', $content, $mHor)) {
+            $horaIni = $mHor[1];
+            $horaTer = $mHor[2];
+        }
+
+        // Trabajo
+        $trabajo = '';
+        if (preg_match('/Descripción Trabajos<\/strong>\s*<\/td>\s*<td[^>]*>(.*?)<\/td>/is', $content, $mTra)) {
+            $trabajo = trim(strip_tags($mTra[1]));
+        }
+
+        // Buscar fotos asociadas en uploads/
+        $fotos = [];
+        $photoFiles = glob($baseDir . '/uploads/' . $folio . '-*') ?: [];
+        foreach ($photoFiles as $pf) {
+            $fotos[] = [
+                'nombre' => basename($pf),
+                'url' => 'uploads/' . basename($pf)
+            ];
+        }
+
+        $repObj = [
+            'id' => $folio,
+            'lugar' => $lugar,
+            'numeroAviso' => $aviso,
+            'solicita' => '',
+            'trabajador' => $trabajador,
+            'personas' => $personas,
+            'integrantes' => $integrantes,
+            'fechaInicio' => $fechaIni ?: date('Y-m-d', filemtime($mailFile)),
+            'fechaTermino' => $fechaTer ?: date('Y-m-d', filemtime($mailFile)),
+            'horaInicio' => $horaIni,
+            'horaTermino' => $horaTer,
+            'tipoHorario' => 'NORMAL',
+            'trabajo' => $trabajo,
+            'materiales' => [],
+            'maquinaria' => [],
+            'estado' => 'Terminado',
+            'fotos' => $fotos,
+            'recepcionCliente' => null,
+            'createdAt' => date('c', filemtime($mailFile)),
+            'updatedAt' => date('c')
+        ];
+
+        $recovered[] = $repObj;
+        $existingIds[$folio] = true;
+    }
+
+    if (count($recovered) > 0) {
+        $backupFile = $dataDir . DIRECTORY_SEPARATOR . 'reportes_backup_' . date('Ymd_His') . '.json';
+        @copy($dbFile, $backupFile);
+
+        $merged = array_merge($currentReports, $recovered);
+        usort($merged, function($a, $b) {
+            return strcmp($b['createdAt'] ?? '', $a['createdAt'] ?? '');
+        });
+        writeReports($dbFile, $merged);
+
+        echo json_encode([
+            'ok' => true,
+            'message' => '¡Éxito! Se recuperaron ' . count($recovered) . ' reportes anteriores desde los buzones de notificación del servidor.',
+            'recovered_count' => count($recovered),
+            'total_now' => count($merged),
+            'recovered_folios' => array_column($recovered, 'id')
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    echo json_encode([
+        'ok' => true,
+        'message' => 'No se encontraron reportes adicionales en los buzones de correo (o ya están todos en la lista actual).',
+        'recovered_count' => 0,
+        'scanned_mail_files' => count($mailDirs)
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 if ($method === 'GET' && $action === 'health') {
     $cfg = getNotifyConfig($notifyConfigFile, $defaultNotifyConfig);
     $folders = ensureMailSubfolders($cfg['emails'] ?? [], $cfg['subfolderName'] ?? 'notificacion reports');
@@ -1088,6 +1254,46 @@ if ($method === 'POST' && $action === 'delete') {
     exit;
 }
 
+if ($method === 'POST' && $action === 'update_gestion') {
+    checkAdminPin();
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+    $id = trim((string)($input['id'] ?? ''));
+    $estadoGestion = trim((string)($input['estadoGestion'] ?? 'Pendiente'));
+    $allowed = ['Pendiente', 'Procesado', 'Cotizado', 'Cobrado'];
+    if (!in_array($estadoGestion, $allowed, true)) {
+        $estadoGestion = 'Pendiente';
+    }
+    if ($id === '') {
+        http_response_code(400);
+        echo json_encode(['error' => 'ID de reporte requerido']);
+        exit;
+    }
+
+    $reports = readReports($dbFile);
+    [$reports, ] = ensureShortFolios($dbFile, $reports);
+    $found = false;
+    $updatedRep = null;
+    foreach ($reports as &$r) {
+        if (($r['id'] ?? '') === $id) {
+            $r['estadoGestion'] = $estadoGestion;
+            $r['fechaGestion'] = gmdate('Y-m-d\TH:i:s.v\Z');
+            $found = true;
+            $updatedRep = $r;
+            break;
+        }
+    }
+    unset($r);
+
+    if ($found) {
+        writeReports($dbFile, $reports);
+        echo json_encode(['ok' => true, 'id' => $id, 'estadoGestion' => $estadoGestion, 'report' => $updatedRep], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+    http_response_code(404);
+    echo json_encode(['error' => 'Reporte no encontrado']);
+    exit;
+}
+
 if ($method === 'POST' && $action === 'update') {
     checkAdminPin();
     $input = json_decode(file_get_contents('php://input'), true) ?? [];
@@ -1172,6 +1378,12 @@ if ($method === 'POST' && $action === 'update') {
                     ];
                 }
                 $r['maquinaria'] = $cleanMaq;
+            }
+            if (isset($input['patente'])) {
+                $r['patente'] = mb_strtoupper(trim((string)$input['patente']), 'UTF-8');
+            }
+            if (isset($input['estadoGestion']) && in_array(trim((string)$input['estadoGestion']), ['Pendiente', 'Procesado', 'Cotizado', 'Cobrado'], true)) {
+                $r['estadoGestion'] = trim((string)$input['estadoGestion']);
             }
             if (isset($input['fotos']) && is_array($input['fotos'])) {
                 $oldUrls = [];
@@ -1647,6 +1859,8 @@ if ($method === 'POST') {
     $r['id'] = sprintf('RT-%04d', $nextNum);
     $r['clientUid'] = $clientUid ?: ('UID-' . round(microtime(true) * 1000));
     $r['trabajador'] = trim((string)$r['trabajador']);
+    $r['patente'] = mb_strtoupper(trim((string)($r['patente'] ?? '')), 'UTF-8');
+    $r['estadoGestion'] = in_array(trim((string)($r['estadoGestion'] ?? '')), ['Pendiente', 'Procesado', 'Cotizado', 'Cobrado'], true) ? trim((string)$r['estadoGestion']) : 'Pendiente';
     $r['numeroAviso'] = trim((string)($r['numeroAviso'] ?? ''));
     $r['integrantes'] = isset($r['integrantes']) && is_array($r['integrantes'])
         ? array_values(array_unique(array_filter(array_map('trim', $r['integrantes']))))
