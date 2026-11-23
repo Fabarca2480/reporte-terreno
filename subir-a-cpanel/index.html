@@ -555,7 +555,7 @@ footer a:hover{opacity:1}
       <div class="card">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px">
           <label style="margin:0">Buscar y Filtrar</label>
-          <button type="button" class="btn btn-sm secondary" style="background:#fef3c7; color:#92400e; font-weight:700; border:1px solid #f59e0b; padding:5px 12px; font-size:12px; border-radius:6px; cursor:pointer;" onclick="recuperarReportesPerdidos()" title="Rastrea automáticamente los reportes anteriores en los buzones de notificación de cPanel y los reincorpora a la lista">🔄 Rescatar Reportes Anteriores</button>
+          <button type="button" class="btn btn-sm secondary" style="background:#f1f5f9; color:#475569; font-weight:600; border:1px solid #cbd5e1; padding:4px 10px; font-size:11.5px; border-radius:6px; cursor:pointer;" onclick="recuperarReportesPerdidos()" title="Herramienta de emergencia: rastrea correos en el servidor solo si se borró la base de datos">🛠️ Rescate Emergencia</button>
         </div>
         <input id="q" placeholder="Folio (ej: RT-0001), lugar, trabajador o trabajo">
         <div class="row" style="margin-top:10px">
@@ -1482,7 +1482,7 @@ async function init() {
   const savedPat = localStorage.getItem("patenteVehiculoTerreno");
   if (savedPat && $("patente")) $("patente").value = savedPat;
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js?v=24").then(reg => {
+    navigator.serviceWorker.register("sw.js?v=25").then(reg => {
       try { reg.update(); } catch (e) {}
     }).catch(() => {});
   }
@@ -2711,16 +2711,34 @@ async function unificarSeleccionados() {
 
 async function recuperarReportesPerdidos() {
   const pin = sessionStorage.getItem("adminPinTerreno") || "";
-  if (!confirm("¿Deseas rastrear y restaurar automáticamente todos los reportes anteriores desde los buzones de notificación del servidor?")) return;
+  const advertencia = "⚠️ HERRAMIENTA DE EMERGENCIA
+
+" +
+    "Nota: Los reportes normales YA se cargan automáticamente en la lista de abajo (o usando el botón azul '🔄 ACTUALIZAR LISTA').
+
+" +
+    "Esta opción es únicamente de rescate para buscar copias en buzones de correo si se borró la base de datos.
+
+" +
+    "¿Deseas continuar?";
+  if (!confirm(advertencia)) return;
   try {
-    const resp = await fetch(API_URL + "?action=recover_lost_reports", {
+    const url = API_URL + "?action=recover_lost_reports" + (pin ? "&pin=" + encodeURIComponent(pin) : "");
+    const resp = await fetch(url, {
       headers: { "X-Admin-Pin": pin }
     });
+    const cType = resp.headers.get("content-type") || "";
+    if (!resp.ok || !cType.includes("application/json")) {
+      if (resp.status === 401) {
+        throw new Error("No autorizado. Su sesión de PIN expiró, ingréselo de nuevo.");
+      }
+      throw new Error("El servidor de hosting no permite lectura directa de carpetas de correo (política de seguridad cPanel). Tus reportes actuales están seguros en la base de datos.");
+    }
     const data = await resp.json();
     alert(data.message || "Operación completada.");
     await cargar();
   } catch (e) {
-    alert("Error al intentar recuperar reportes: " + e.message);
+    alert("Aviso de Rescate: " + (e.message || "No se pudo consultar el buzón de correo."));
   }
 }
 

@@ -666,11 +666,14 @@ if ($method === 'GET' && $action === 'recover_lost_reports') {
         }
     }
 
-    // 2. Buscar correos de notificación en los buzones de cPanel
-    $mailDirs = glob($home . '/mail/mycmantencion.cl/*/.notificacion reports/{new,cur}/*', GLOB_BRACE) ?: [];
-    // También buscar en carpetas principales si no hay subcarpeta
-    if (empty($mailDirs)) {
-        $mailDirs = glob($home . '/mail/mycmantencion.cl/*/{new,cur}/*', GLOB_BRACE) ?: [];
+    // 2. Buscar correos de notificación en los buzones de cPanel de forma segura
+    $mailDirs = [];
+    $baseMail = $home . '/mail/mycmantencion.cl';
+    if (@is_dir($baseMail)) {
+        $mailDirs = @glob($baseMail . '/*/.notificacion reports/{new,cur}/*', GLOB_BRACE) ?: [];
+        if (empty($mailDirs)) {
+            $mailDirs = @glob($baseMail . '/*/{new,cur}/*', GLOB_BRACE) ?: [];
+        }
     }
 
     $recovered = [];
