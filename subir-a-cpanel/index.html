@@ -1482,7 +1482,7 @@ async function init() {
   const savedPat = localStorage.getItem("patenteVehiculoTerreno");
   if (savedPat && $("patente")) $("patente").value = savedPat;
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js?v=25").then(reg => {
+    navigator.serviceWorker.register("sw.js?v=26").then(reg => {
       try { reg.update(); } catch (e) {}
     }).catch(() => {});
   }
@@ -2084,7 +2084,7 @@ async function cargar() {
       ["estado", "est"]
     ].forEach(a => $(a[1]).value && p.set(a[0], $(a[1]).value));
 
-    const x = await fetch(API_URL + "?" + p.toString(), {
+    const x = await fetch(API_URL + "?" + p.toString() + (pin ? "&pin=" + encodeURIComponent(pin) : ""), {
       headers: { "X-Admin-Pin": pin }
     });
     if (x.status === 401) {
@@ -2092,7 +2092,14 @@ async function cargar() {
       abrirLogistica();
       return;
     }
-    if (!x.ok) throw new Error();
+    const cType = x.headers.get("content-type") || "";
+    if (!x.ok || !cType.includes("application/json")) {
+      const txt = await x.text();
+      if (txt.includes("One moment, please") || txt.includes("wsidchk") || cType.includes("text/html")) {
+        throw new Error("WAF_CHALLENGE");
+      }
+      throw new Error("HTTP " + x.status);
+    }
     const d = await x.json();
     const todosRecibidos = Array.isArray(d) ? d : [];
     todosRecibidos.forEach(r => {
@@ -2427,7 +2434,20 @@ async function cargar() {
           .join("")
       : "No hay reportes para los filtros seleccionados.";
   } catch (e) {
-    $("lista").innerHTML = "Recepción central no disponible en este momento.";
+    if (e && e.message === "WAF_CHALLENGE") {
+      $("lista").innerHTML = `
+        <div style="background:#fffbeb;border:2px solid #f59e0b;border-radius:10px;padding:18px;margin:12px 0;color:#92400e;line-height:1.6">
+          <h4 style="margin:0 0 8px 0;color:#b45309;font-size:16px;display:flex;align-items:center;gap:8px">🛡️ Verificación de seguridad del hosting requerida</h4>
+          <p style="margin:0 0 10px 0;font-size:13.5px">El servidor de hosting (Vínculo.cl) activó una comprobación automática de seguridad. <b>Tus reportes están seguros e intactos en la base de datos</b>.</p>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <a href="api.php?action=health" target="_blank" class="btn primary" style="display:inline-block;padding:9px 18px;text-decoration:none;font-weight:700;background:#1d4ed8;color:#fff;border-radius:6px">👉 Validar conexión con el hosting (1 clic)</a>
+            <button type="button" class="btn success" onclick="cargar()" style="padding:9px 18px;font-weight:700">🔄 Ya validé, Cargar Reportes</button>
+          </div>
+          <p style="font-size:12px;color:#78350f;margin:8px 0 0 0">Se abrirá una pestaña que valida la conexión en 2 segundos. Luego pulsa "Ya validé, Cargar Reportes".</p>
+        </div>`;
+    } else {
+      $("lista").innerHTML = `<div style="padding:14px;color:#dc2626">Recepción central no disponible en este momento. (${esc((e && e.message) || "Error de conexión")})</div>`;
+    }
   }
 }
 
